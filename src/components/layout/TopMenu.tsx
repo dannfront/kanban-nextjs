@@ -19,7 +19,7 @@ export function TopMenu({ boards }: TopMenuProps) {
   const activeBoard = boards.find((board) => board.id === boardId);
   const boardName = activeBoard?.name ?? boardId ?? "";
 
-  const { setMobile } = useUIStore();
+  const { openBoardMenu } = useUIStore();
 
   return (
     <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-[var(--color-lines-dark)] bg-[var(--color-bg-header)] px-4 md:h-24 md:px-6 lg:px-8">
@@ -28,7 +28,7 @@ export function TopMenu({ boards }: TopMenuProps) {
         <img src={logoMobile.src} alt="Kanban" width={24} height={25} />
         <button
           type="button"
-          onClick={() => setMobile("open")}
+          onClick={openBoardMenu}
           className="flex items-center gap-2 text-lg font-bold"
         >
           {boardName}
@@ -42,7 +42,7 @@ export function TopMenu({ boards }: TopMenuProps) {
       </h1>
 
       <div className="flex items-center gap-4 md:gap-6">
-        <Button size="icon" className="md:hidden" disabled>
+        <Button size="sm" className="md:hidden" disabled>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={iconAddTaskMobile.src} alt="Add New Task" width={12} height={12} />
         </Button>

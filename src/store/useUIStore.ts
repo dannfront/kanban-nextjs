@@ -3,26 +3,24 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-type SidebarMobile = "open" | "closed";
-
 interface UIState {
-  mobile: SidebarMobile;
+  boardMenuOpen: boolean;
   desktopHidden: boolean;
-  setMobile: (value: SidebarMobile) => void;
-  toggleMobile: () => void;
+  openBoardMenu: () => void;
+  closeBoardMenu: () => void;
+  toggleBoardMenu: () => void;
   toggleDesktop: () => void;
 }
 
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      mobile: "closed",
+      boardMenuOpen: false,
       desktopHidden: false,
-      setMobile: (value) => set({ mobile: value }),
-      toggleMobile: () =>
-        set((state) => ({
-          mobile: state.mobile === "open" ? "closed" : "open",
-        })),
+      openBoardMenu: () => set({ boardMenuOpen: true }),
+      closeBoardMenu: () => set({ boardMenuOpen: false }),
+      toggleBoardMenu: () =>
+        set((state) => ({ boardMenuOpen: !state.boardMenuOpen })),
       toggleDesktop: () =>
         set((state) => ({ desktopHidden: !state.desktopHidden })),
     }),
