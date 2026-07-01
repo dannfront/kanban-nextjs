@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  /* Kanban Palette */
+  --color-main-purple: #635FC7;
+  --color-main-purple-hover: #A8A4FF;
+  --color-very-dark: #000112;
+  --color-dark-gray: #20212C;
+  --color-dark-gray-2: #2B2C37;
+  --color-lines-dark: #3E3F4E;
+  --color-medium-gray: #828FA3;
+  --color-lines-light: #E4EBFA;
+  --color-light-gray: #F4F7FD;
+  --color-white: #FFFFFF;
+  --color-red: #EA5555;
+  --color-red-hover: #FF9898;
+
+  /* Column Status Colors */
+  --color-dot-todo: #49C4E5;
+  --color-dot-doing: #8471F2;
+  --color-dot-done: #67E2AE;
+
+  /* Light Mode Contextual Backgrounds */
+  --color-bg-body: #F4F7FD;
+  --color-bg-sidebar: #FFFFFF;
+  --color-bg-header: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-bg-modal: #FFFFFF;
+  --color-text-primary: #000112;
+  --color-text-secondary: #828FA3;
+}
+
+@theme inline {
+  --color-background: var(--color-bg-body);
+  --color-foreground: var(--color-text-primary);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jakarta);
+
+  /* Kanban Palette */
+  --color-main-purple: #635FC7;
+  --color-main-purple-hover: #A8A4FF;
+  --color-very-dark: #000112;
+  --color-dark-gray: #20212C;
+  --color-dark-gray-2: #2B2C37;
+  --color-lines-dark: #3E3F4E;
+  --color-medium-gray: #828FA3;
+  --color-lines-light: #E4EBFA;
+  --color-light-gray: #F4F7FD;
+  --color-white: #FFFFFF;
+  --color-red: #EA5555;
+  --color-red-hover: #FF9898;
+
+  /* Column Status Colors */
+  --color-dot-todo: #49C4E5;
+  --color-dot-doing: #8471F2;
+  --color-dot-done: #67E2AE;
+
+  /* Contextual backgrounds */
+  --color-bg-body: var(--color-bg-body);
+  --color-bg-sidebar: var(--color-bg-sidebar);
+  --color-bg-header: var(--color-bg-header);
+  --color-bg-card: var(--color-bg-card);
+  --color-bg-modal: var(--color-bg-modal);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  --color-bg-body: #20212C;
+  --color-bg-sidebar: #2B2C37;
+  --color-bg-header: #2B2C37;
+  --color-bg-card: #2B2C37;
+  --color-bg-modal: #2B2C37;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #828FA3;
+}
+
+body {
+  background: var(--color-bg-body);
+  color: var(--color-text-primary);
+  font-family: var(--font-jakarta), Arial, Helvetica, sans-serif;
+}
