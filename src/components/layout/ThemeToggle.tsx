@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import iconLightTheme from "@/assets/icon-light-theme.svg";
 import iconDarkTheme from "@/assets/icon-dark-theme.svg";
@@ -26,8 +27,7 @@ export function ThemeToggle() {
 
   return (
     <div className="flex items-center justify-center gap-6 rounded-md bg-[var(--color-bg-body)] py-3.5">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={iconLightTheme.src} alt="" width={19} height={19} />
+      <Image src={iconLightTheme} alt="" width={19} height={19} />
       <button
         type="button"
         role="switch"
@@ -43,8 +43,7 @@ export function ThemeToggle() {
           )}
         />
       </button>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={iconDarkTheme.src} alt="" width={16} height={16} />
+      <Image src={iconDarkTheme} alt="" width={16} height={16} />
     </div>
   );
 }

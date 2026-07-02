@@ -8,7 +8,6 @@ interface UIState {
   desktopHidden: boolean;
   openBoardMenu: () => void;
   closeBoardMenu: () => void;
-  toggleBoardMenu: () => void;
   toggleDesktop: () => void;
 }
 
@@ -19,8 +18,6 @@ export const useUIStore = create<UIState>()(
       desktopHidden: false,
       openBoardMenu: () => set({ boardMenuOpen: true }),
       closeBoardMenu: () => set({ boardMenuOpen: false }),
-      toggleBoardMenu: () =>
-        set((state) => ({ boardMenuOpen: !state.boardMenuOpen })),
       toggleDesktop: () =>
         set((state) => ({ desktopHidden: !state.desktopHidden })),
     }),
