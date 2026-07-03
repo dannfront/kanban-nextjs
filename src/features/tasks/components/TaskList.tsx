@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTaskStore } from "@/features/tasks/store/useTaskStore";
 import { TaskCard } from "./TaskCard";
 
@@ -8,10 +9,14 @@ interface TaskListProps {
 }
 
 export function TaskList({ columnId }: TaskListProps) {
-  const tasks = useTaskStore((s) =>
-    s.tasks
-      .filter((t) => t.columnId === columnId)
-      .toSorted((a, b) => a.order - b.order)
+  const allTasks = useTaskStore((s) => s.tasks);
+
+  const tasks = useMemo(
+    () =>
+      allTasks
+        .filter((t) => t.columnId === columnId)
+        .toSorted((a, b) => a.order - b.order),
+    [allTasks, columnId]
   );
 
   if (tasks.length === 0) {
