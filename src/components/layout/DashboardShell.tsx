@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
 import { TopMenu } from "./TopMenu";
 import { MobileBoardMenu } from "./MobileBoardMenu";
+import { ModalRouter } from "@/store/ModalRouter";
 import type { Board } from "@/features/boards/types";
 
 interface DashboardShellProps {
@@ -30,6 +31,7 @@ export function DashboardShell({ boards, children }: DashboardShellProps) {
           {children}
         </main>
       </div>
+      <ModalRouter />
     </div>
   );
 }
