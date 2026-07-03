@@ -8,7 +8,7 @@ export function ColumnList() {
   const columns = useBoardStore((state) => state.columns);
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="flex h-full items-start gap-6">
       {columns.map((column) => (
         <Column key={column.id} column={column} />
       ))}

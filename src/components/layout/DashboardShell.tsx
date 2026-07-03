@@ -26,7 +26,7 @@ export function DashboardShell({ boards, children }: DashboardShellProps) {
       <MobileBoardMenu boards={boards} />
       <div className="flex min-w-0 flex-col">
         <TopMenu boards={boards} />
-        <main className="flex-1 overflow-x-auto overflow-y-hidden">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
