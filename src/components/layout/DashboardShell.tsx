@@ -18,7 +18,7 @@ export function DashboardShell({ boards, children }: DashboardShellProps) {
   return (
     <div
       className={cn(
-        "grid h-full grid-cols-1 grid-rows-1",
+        "grid h-full overflow-hidden grid-cols-1 grid-rows-1",
         !desktopHidden && "md:grid-cols-[260px_1fr]"
       )}
     >
