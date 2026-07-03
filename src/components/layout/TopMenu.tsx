@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useUIStore } from "@/store/useUIStore";
+import { useModalStore } from "@/store/useModalStore";
 import { Button } from "@/components/ui/Button";
 import type { Board } from "@/features/boards/types";
 import Image from "next/image";
@@ -20,7 +20,7 @@ export function TopMenu({ boards }: TopMenuProps) {
   const activeBoard = boards.find((board) => board.id === boardId);
   const boardName = activeBoard?.name ?? boardId ?? "";
 
-  const { openBoardMenu } = useUIStore();
+  const openModal = useModalStore((state) => state.openModal);
 
   return (
     <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-[var(--color-lines-dark)] bg-[var(--color-bg-header)] px-4 md:h-24 md:px-6 lg:px-8">
@@ -28,7 +28,7 @@ export function TopMenu({ boards }: TopMenuProps) {
         <Image src={logoMobile} alt="Kanban" width={24} height={25} />
         <button
           type="button"
-          onClick={openBoardMenu}
+          onClick={() => openModal("mobile-menu")}
           className="flex items-center gap-2 text-lg font-bold"
         >
           {boardName}
