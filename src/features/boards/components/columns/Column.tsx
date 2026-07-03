@@ -1,4 +1,5 @@
 import type { Column as ColumnType } from "@/features/boards/types";
+import { TaskList } from "@/features/tasks/components/TaskList";
 
 interface ColumnProps {
   column: ColumnType;
@@ -19,7 +20,9 @@ export function Column({ column }: ColumnProps) {
           {column.name}
         </h2>
       </header>
-      <div className="flex-1" />
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
+        <TaskList columnId={column.id} />
+      </div>
     </div>
   );
 }
