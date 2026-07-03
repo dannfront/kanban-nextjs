@@ -3,14 +3,29 @@
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
+type ModalSize = "sm" | "md" | "lg";
+
+const sizeClassMap: Record<ModalSize, string> = {
+  sm: "max-w-[264px]",
+  md: "max-w-[480px]",
+  lg: "max-w-[640px]",
+};
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  size?: ModalSize;
 }
 
-export function Modal({ isOpen, onClose, children, className }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  children,
+  className,
+  size = "sm",
+}: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -38,7 +53,8 @@ export function Modal({ isOpen, onClose, children, className }: ModalProps) {
     >
       <div
         className={cn(
-          "max-w-[264px] w-full mx-4 rounded-lg bg-[var(--color-bg-sidebar)]",
+          "w-full mx-4 rounded-lg bg-[var(--color-bg-sidebar)]",
+          sizeClassMap[size],
           className
         )}
       >
