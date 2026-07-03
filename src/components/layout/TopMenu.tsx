@@ -22,6 +22,11 @@ export function TopMenu({ boards }: TopMenuProps) {
 
   const openModal = useModalStore((state) => state.openModal);
 
+  const handleAddTask = () => {
+    if (!boardId) return;
+    openModal("add-task", { boardId });
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-[var(--color-lines-dark)] bg-[var(--color-bg-header)] px-4 md:h-24 md:px-6 lg:px-8">
       <div className="flex items-center gap-4 md:hidden">
@@ -41,10 +46,20 @@ export function TopMenu({ boards }: TopMenuProps) {
       </h1>
 
       <div className="flex items-center gap-4 md:gap-6">
-        <Button size="sm" className="md:hidden" disabled>
+        <Button
+          size="sm"
+          className="md:hidden"
+          disabled={!boardId}
+          onClick={handleAddTask}
+        >
           <Image src={iconAddTaskMobile} alt="Add New Task" width={12} height={12} />
         </Button>
-        <Button size="lg" className="hidden md:inline-flex" disabled>
+        <Button
+          size="lg"
+          className="hidden md:inline-flex"
+          disabled={!boardId}
+          onClick={handleAddTask}
+        >
           + Add New Task
         </Button>
         <button
