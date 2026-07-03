@@ -1,5 +1,6 @@
 import { getBoard, getColumnsForBoard } from "@/lib/boards";
 import { EmptyBoard } from "@/features/boards/components/EmptyBoard";
+import { BoardView } from "@/features/boards/components/columns/BoardView";
 
 interface PageProps {
   params: Promise<{ boardId: string }>;
@@ -14,9 +15,5 @@ export default async function BoardPage({ params }: PageProps) {
     return <EmptyBoard />;
   }
 
-  return (
-    <div className="flex h-full items-center justify-center text-[var(--color-medium-gray)]">
-      Board content coming soon
-    </div>
-  );
+  return <BoardView initialColumns={columns} />;
 }

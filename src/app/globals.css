@@ -26,6 +26,7 @@
   --color-bg-header: #FFFFFF;
   --color-bg-card: #FFFFFF;
   --color-bg-modal: #FFFFFF;
+  --color-bg-column-placeholder: #E4EBFA;
   --color-text-primary: #000112;
   --color-text-secondary: #828FA3;
 }
@@ -61,6 +62,7 @@
   --color-bg-header: var(--color-bg-header);
   --color-bg-card: var(--color-bg-card);
   --color-bg-modal: var(--color-bg-modal);
+  --color-bg-column-placeholder: var(--color-bg-column-placeholder);
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
 }
@@ -73,6 +75,7 @@
   --color-bg-header: #2B2C37;
   --color-bg-card: #2B2C37;
   --color-bg-modal: #2B2C37;
+  --color-bg-column-placeholder: rgba(62, 63, 78, 0.4);
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #828FA3;
 }
