@@ -1,6 +1,7 @@
 "use client";
 
 import { useModalStore } from "@/store/useModalStore";
+import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
 import type { Task } from "@/features/tasks/types";
 
 interface TaskCardProps {
@@ -34,9 +35,13 @@ export function TaskCard({ task }: TaskCardProps) {
       <h3 className="text-[15px] font-bold leading-[19px] text-[var(--color-text-primary)] line-clamp-2">
         {task.title}
       </h3>
-      <p className="mt-2 text-[12px] font-bold text-[var(--color-text-secondary)]">
-        {completed} of {total} subtasks
-      </p>
+      <div className="mt-2">
+        <SubtaskCounter
+          completed={completed}
+          total={total}
+          variant="sentence"
+        />
+      </div>
     </div>
   );
 }

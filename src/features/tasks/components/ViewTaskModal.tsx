@@ -6,6 +6,10 @@ import { Modal } from "@/components/ui/Modal";
 import { useModalStore } from "@/store/useModalStore";
 import { useTaskStore } from "@/features/tasks/store/useTaskStore";
 import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { TaskNotFound } from "@/features/tasks/components/TaskNotFound";
+import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
+import { cn } from "@/lib/utils";
+import { modalCardClassName } from "@/lib/modalCard";
 import iconVerticalEllipsis from "@/assets/icon-vertical-ellipsis.svg";
 import iconCheck from "@/assets/icon-check.svg";
 
@@ -48,11 +52,9 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
         isOpen
         onClose={closeModal}
         size="md"
-        className="min-w-[295px] bg-[var(--color-bg-modal)] p-6 md:p-8"
+        className={cn(modalCardClassName)}
       >
-        <p className="text-[13px] leading-[23px] text-[var(--color-text-secondary)]">
-          Task not found
-        </p>
+        <TaskNotFound />
       </Modal>
     );
   }
@@ -87,7 +89,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
       isOpen
       onClose={closeModal}
       size="md"
-      className="min-w-[295px] bg-[var(--color-bg-modal)] p-6 md:p-8"
+      className={cn(modalCardClassName)}
     >
       <div className="flex items-start justify-between gap-4">
         <h2 className="text-lg font-bold leading-[23px] text-[var(--color-text-primary)]">
@@ -133,9 +135,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
       ) : null}
 
       <div className="mt-6">
-        <p className="text-xs font-bold text-[var(--color-text-secondary)]">
-          Subtasks ({completedCount} of {totalCount})
-        </p>
+        <SubtaskCounter completed={completedCount} total={totalCount} />
 
         <div className="mt-4 flex flex-col gap-2">
           {task.subtasks.map((subtask) => (
