@@ -3,12 +3,12 @@
 import { useParams } from "next/navigation";
 import { useModalStore } from "@/store/useModalStore";
 import { Button } from "@/components/ui/Button";
+import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
 import type { Board } from "@/features/boards/types";
 import Image from "next/image";
 import logoMobile from "@/assets/logo-mobile.svg";
 import iconAddTaskMobile from "@/assets/icon-add-task-mobile.svg";
 import iconChevronDown from "@/assets/icon-chevron-down.svg";
-import iconVerticalEllipsis from "@/assets/icon-vertical-ellipsis.svg";
 
 interface TopMenuProps {
   boards: Board[];
@@ -62,13 +62,7 @@ export function TopMenu({ boards }: TopMenuProps) {
         >
           + Add New Task
         </Button>
-        <button
-          type="button"
-          aria-label="Board menu"
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/10"
-        >
-          <Image src={iconVerticalEllipsis} alt="" width={5} height={20} />
-        </button>
+        <KebabMenuButton ariaLabel="Board menu" onClick={() => {}} />
       </div>
     </header>
   );
