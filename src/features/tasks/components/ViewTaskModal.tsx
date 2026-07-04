@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { useModalStore } from "@/store/useModalStore";
@@ -8,9 +8,11 @@ import { useTaskStore } from "@/features/tasks/store/useTaskStore";
 import { useBoardStore } from "@/features/boards/store/useBoardStore";
 import { TaskNotFound } from "@/features/tasks/components/TaskNotFound";
 import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
+import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
+import { DropdownMenuItem } from "@/components/ui/DropdownMenuItem";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
-import iconVerticalEllipsis from "@/assets/icon-vertical-ellipsis.svg";
 import iconCheck from "@/assets/icon-check.svg";
 
 interface ViewTaskModalProps {
@@ -29,22 +31,6 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
 
   if (!task) {
     return (
@@ -97,34 +83,23 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
         </h2>
 
         <div ref={menuRef} className="relative shrink-0">
-          <button
-            type="button"
-            aria-label="Task menu"
-            aria-expanded={menuOpen}
+          <KebabMenuButton
+            ariaLabel="Task menu"
+            ariaExpanded={menuOpen}
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+          />
+          <DropdownMenu
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            containerRef={menuRef}
           >
-            <Image src={iconVerticalEllipsis} alt="" width={5} height={20} />
-          </button>
-
-          {menuOpen && (
-            <div className="absolute right-0 top-10 z-10 w-40 rounded-lg bg-[var(--color-bg-modal)] py-2 shadow-[0_4px_6px_rgba(0,0,0,0.1)] ring-1 ring-[var(--color-lines-dark)]">
-              <button
-                type="button"
-                onClick={handleEditTask}
-                className="w-full px-4 py-2 text-left text-[13px] font-medium text-[var(--color-medium-gray)] transition-colors hover:bg-black/5"
-              >
-                Edit Task
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteTask}
-                className="w-full px-4 py-2 text-left text-[13px] font-medium text-[var(--color-red)] transition-colors hover:bg-black/5"
-              >
-                Delete Task
-              </button>
-            </div>
-          )}
+            <DropdownMenuItem onClick={handleEditTask}>
+              Edit Task
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeleteTask} variant="destructive">
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenu>
         </div>
       </div>
 
