@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { ModalTitle } from "@/components/ui/ModalTitle";
 
 interface ViewTaskModalProps {
   taskId: string;
@@ -70,9 +71,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
       className={cn(modalCardClassName)}
     >
       <div className="flex items-start justify-between gap-4">
-        <h2 className="text-lg font-bold leading-[23px] text-[var(--color-text-primary)]">
-          {task.title}
-        </h2>
+        <ModalTitle className="leading-[23px]">{task.title}</ModalTitle>
 
         <div ref={menuRef} className="relative shrink-0">
           <KebabMenuButton
