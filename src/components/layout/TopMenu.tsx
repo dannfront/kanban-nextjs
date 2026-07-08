@@ -1,9 +1,12 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useModalStore } from "@/store/useModalStore";
 import { Button } from "@/components/ui/Button";
 import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
+import { DropdownMenuItem } from "@/components/ui/DropdownMenuItem";
 import type { Board } from "@/features/boards/types";
 import Image from "next/image";
 import logoMobile from "@/assets/logo-mobile.svg";
@@ -22,9 +25,24 @@ export function TopMenu({ boards }: TopMenuProps) {
 
   const openModal = useModalStore((state) => state.openModal);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const handleAddTask = () => {
     if (!boardId) return;
     openModal("add-task", { boardId });
+  };
+
+  const handleEditBoard = () => {
+    if (!boardId) return;
+    setMenuOpen(false);
+    openModal("edit-board", { boardId });
+  };
+
+  const handleDeleteBoard = () => {
+    if (!boardId) return;
+    setMenuOpen(false);
+    openModal("delete-board", { boardId });
   };
 
   return (
@@ -62,7 +80,26 @@ export function TopMenu({ boards }: TopMenuProps) {
         >
           + Add New Task
         </Button>
-        <KebabMenuButton ariaLabel="Board menu" onClick={() => {}} />
+
+        <div ref={menuRef} className="relative">
+          <KebabMenuButton
+            ariaLabel="Board menu"
+            ariaExpanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+          />
+          <DropdownMenu
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            containerRef={menuRef}
+          >
+            <DropdownMenuItem onClick={handleEditBoard}>
+              Edit Board
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeleteBoard} variant="destructive">
+              Delete Board
+            </DropdownMenuItem>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

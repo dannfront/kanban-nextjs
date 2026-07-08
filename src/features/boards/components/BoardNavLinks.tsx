@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useModalStore } from "@/store/useModalStore";
 import type { Board } from "@/features/boards/types";
 import iconBoard from "@/assets/icon-board.svg";
 
@@ -11,9 +13,14 @@ interface BoardNavLinksProps {
   onNavigate?: () => void;
 }
 
-export function BoardNavLinks({ boards, onNavigate }: BoardNavLinksProps) {
+export function BoardNavLinks({ boards: _boards, onNavigate }: BoardNavLinksProps) {
   const params = useParams<{ boardId?: string }>();
   const boardId = params.boardId;
+  const storeBoards = useBoardStore((state) => state.boards);
+  const openModal = useModalStore((state) => state.openModal);
+
+  // Use store boards if available, fallback to prop for SSR/initial render
+  const boards = storeBoards.length > 0 ? storeBoards : _boards;
 
   return (
     <nav>
@@ -45,8 +52,8 @@ export function BoardNavLinks({ boards, onNavigate }: BoardNavLinksProps) {
       })}
       <button
         type="button"
-        disabled
-        className="flex w-full cursor-not-allowed items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold text-[var(--color-main-purple)] opacity-50"
+        onClick={() => openModal("add-board")}
+        className="flex w-full items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold text-[var(--color-main-purple)] transition-colors hover:text-[var(--color-main-purple-hover)]"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={iconBoard.src} alt="" width={16} height={16} />

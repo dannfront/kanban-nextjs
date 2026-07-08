@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useUIStore } from "@/store/useUIStore";
+import { useBoardStore } from "@/features/boards/store/useBoardStore";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
 import { TopMenu } from "./TopMenu";
@@ -15,6 +17,11 @@ interface DashboardShellProps {
 
 export function DashboardShell({ boards, children }: DashboardShellProps) {
   const desktopHidden = useUIStore((state) => state.desktopHidden);
+  const setBoards = useBoardStore((state) => state.setBoards);
+
+  useEffect(() => {
+    setBoards(boards);
+  }, [boards, setBoards]);
 
   return (
     <div
