@@ -29,8 +29,8 @@ export function TaskList({ columnId }: TaskListProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      {tasks.map((task) => (
-        <TaskCard key={task.id} task={task} />
+      {tasks.map((task, index) => (
+        <TaskCard key={task.id} task={task} index={index} columnId={columnId} />
       ))}
     </div>
   );
