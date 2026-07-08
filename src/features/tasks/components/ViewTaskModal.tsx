@@ -61,6 +61,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
 
   const handleDeleteTask = () => {
     setMenuOpen(false);
+    openModal("delete-task", { taskId });
   };
 
   return (

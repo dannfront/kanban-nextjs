@@ -7,6 +7,12 @@ import { useBoardStore } from "@/features/boards/store/useBoardStore";
 interface TaskState {
   tasks: Task[];
   setTasks: (next: Task[]) => void;
+  addTask: (task: Omit<Task, "id">) => string;
+  updateTask: (taskId: string, updates: Partial<Omit<Task, "id">>) => void;
+  deleteTask: (taskId: string) => void;
+  deleteTasksForBoard: (boardId: string) => void;
+  deleteTasksForColumn: (columnId: string) => void;
+  deleteTasksForColumns: (columnIds: string[]) => void;
   toggleSubtask: (args: { taskId: string; subtaskId: string }) => void;
   moveTask: (taskId: string, newStatus: string) => void;
 }
@@ -14,6 +20,47 @@ interface TaskState {
 export const useTaskStore = create<TaskState>((set) => ({
   tasks: [],
   setTasks: (next) => set({ tasks: next }),
+
+  addTask: (task) => {
+    const id = crypto.randomUUID();
+    set((state) => ({ tasks: [...state.tasks, { ...task, id }] }));
+    return id;
+  },
+
+  updateTask: (taskId, updates) =>
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId ? { ...task, ...updates } : task
+      ),
+    })),
+
+  deleteTask: (taskId) =>
+    set((state) => ({
+      tasks: state.tasks.filter((task) => task.id !== taskId),
+    })),
+
+  deleteTasksForBoard: (boardId) =>
+    set((state) => {
+      const boardColumns = useBoardStore
+        .getState()
+        .columns.filter((c) => c.boardId === boardId)
+        .map((c) => c.id);
+      return {
+        tasks: state.tasks.filter(
+          (task) => !boardColumns.includes(task.columnId)
+        ),
+      };
+    }),
+
+  deleteTasksForColumn: (columnId) =>
+    set((state) => ({
+      tasks: state.tasks.filter((task) => task.columnId !== columnId),
+    })),
+
+  deleteTasksForColumns: (columnIds) =>
+    set((state) => ({
+      tasks: state.tasks.filter((task) => !columnIds.includes(task.columnId)),
+    })),
 
   toggleSubtask: ({ taskId, subtaskId }) =>
     set((state) => ({
