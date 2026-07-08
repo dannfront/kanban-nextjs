@@ -1,2 +1,2 @@
 export const modalCardClassName =
-  "min-w-[295px] bg-[var(--color-bg-modal)] p-6 md:p-8";
+  "custom-scrollbar min-w-[295px] max-h-[80vh] overflow-y-auto bg-[var(--color-bg-modal)] p-6 md:p-8";
