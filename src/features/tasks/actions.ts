@@ -1,4 +1,5 @@
 "use server";
+import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { type Task, type Subtask } from "@prisma/client";
@@ -79,7 +80,7 @@ export async function createTask(
       return { success: false, error: "Failed to create task" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("createTask failed:", error);
