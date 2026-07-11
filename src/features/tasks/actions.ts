@@ -1,11 +1,18 @@
 "use server";
+import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { type Task, type Subtask } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
-import { computeInsertOrder } from "@/lib/actions/ordering";
+import { computeInsertOrder, GAP, isOrderCollision } from "@/lib/actions/ordering";
 import { softDeleteTask, softDeleteSubtask } from "@/lib/actions/soft-delete";
+import {
+  requireBoardOwnership,
+  findBoardIdForColumn,
+  findBoardIdForTask,
+  findBoardIdForSubtask,
+} from "@/lib/auth";
 import {
   CreateTaskSchema,
   UpdateTaskSchema,
@@ -17,7 +24,7 @@ import {
 } from "./schemas";
 
 const REVALIDATE_PATH = "/kanban-dashboard";
-const ORDER_GAP = 1000;
+const ORDER_GAP = GAP;
 
 type TaskWithSubtasks = Task & { subtasks: Subtask[] };
 
@@ -31,6 +38,12 @@ export async function createTask(
 
   try {
     const { columnId, title, description, subtasks } = validation.data;
+
+    const columnBoardId = await findBoardIdForColumn(columnId);
+    if (!columnBoardId) {
+      return { success: false, error: "Column not found" };
+    }
+    await requireBoardOwnership(columnBoardId);
 
     const task = await prisma.$transaction(async (tx) => {
       const lastTask = await tx.task.findFirst({
@@ -67,7 +80,7 @@ export async function createTask(
       return { success: false, error: "Failed to create task" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("createTask failed:", error);
@@ -92,9 +105,24 @@ export async function updateTask(
   try {
     const { title, description, columnId, subtasks } = inputValidation.data;
 
+    const taskBoardId = await findBoardIdForTask(taskId);
+    if (!taskBoardId) {
+      return { success: false, error: "Task not found" };
+    }
+    await requireBoardOwnership(taskBoardId);
+
+    if (columnId !== undefined) {
+      const targetBoardId = await findBoardIdForColumn(columnId);
+      if (!targetBoardId) {
+        return { success: false, error: "Target column not found" };
+      }
+      await requireBoardOwnership(targetBoardId);
+    }
+
     const task = await prisma.$transaction(async (tx) => {
       const existingTask = await tx.task.findUnique({
         where: { id: taskId, deletedAt: null },
+        select: { columnId: true },
       });
       if (!existingTask) {
         throw new Error("Task not found");
@@ -127,10 +155,13 @@ export async function updateTask(
       if (subtasks && subtasks.length > 0) {
         for (const subtask of subtasks) {
           if (subtask.id) {
-            await tx.subtask.update({
-              where: { id: subtask.id },
+            const updated = await tx.subtask.updateMany({
+              where: { id: subtask.id, taskId },
               data: { title: subtask.title },
             });
+            if (updated.count === 0) {
+              throw new Error("Subtask not found");
+            }
           } else {
             await tx.subtask.create({
               data: {
@@ -152,7 +183,7 @@ export async function updateTask(
       return { success: false, error: "Task not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("updateTask failed:", error);
@@ -170,8 +201,13 @@ export async function deleteTask(taskId: string): Promise<ActionResult<void>> {
   }
 
   try {
+    const boardId = await findBoardIdForTask(taskId);
+    if (!boardId) {
+      return { success: false, error: "Task not found" };
+    }
+    await requireBoardOwnership(boardId);
     await softDeleteTask(taskId);
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteTask failed:", error);
@@ -194,19 +230,24 @@ export async function moveTask(
   }
 
   try {
+    const sourceBoardId = await findBoardIdForTask(taskId);
+    if (!sourceBoardId) {
+      return { success: false, error: "Task not found" };
+    }
+    await requireBoardOwnership(sourceBoardId);
+
+    const targetBoardId = await findBoardIdForColumn(targetColumnId);
+    if (!targetBoardId) {
+      return { success: false, error: "Target column not found" };
+    }
+    await requireBoardOwnership(targetBoardId);
+
     const task = await prisma.$transaction(async (tx) => {
-      const existingTask = await tx.task.findUnique({
+      const existingTask = await tx.task.findFirst({
         where: { id: taskId, deletedAt: null },
       });
       if (!existingTask) {
         throw new Error("Task not found");
-      }
-
-      const targetColumn = await tx.column.findUnique({
-        where: { id: targetColumnId, deletedAt: null },
-      });
-      if (!targetColumn) {
-        throw new Error("Target column not found");
       }
 
       const tasks = await tx.task.findMany({
@@ -232,22 +273,54 @@ export async function moveTask(
         );
       }
 
+      if (isOrderCollision(
+        newIndex === 0 ? null : tasks[newIndex - 1]?.order ?? null,
+        newIndex >= tasks.length ? null : tasks[newIndex]?.order ?? null,
+        newOrder
+      )) {
+        const allTasks = await tx.task.findMany({
+          where: { columnId: targetColumnId, deletedAt: null },
+          orderBy: { order: "asc" },
+        });
+        for (const [i, t] of allTasks.entries()) {
+          if (t.id !== taskId) {
+            await tx.task.update({
+              where: { id: t.id },
+              data: { order: (i + 1) * ORDER_GAP },
+            });
+          }
+        }
+        const rebalanced = await tx.task.findMany({
+          where: { columnId: targetColumnId, deletedAt: null, id: { not: taskId } },
+          orderBy: { order: "asc" },
+        });
+        if (rebalanced.length === 0) {
+          newOrder = ORDER_GAP;
+        } else if (newIndex === 0) {
+          newOrder = computeInsertOrder(null, rebalanced[0].order);
+        } else if (newIndex >= rebalanced.length) {
+          newOrder = computeInsertOrder(rebalanced[rebalanced.length - 1].order, null);
+        } else {
+          newOrder = computeInsertOrder(
+            rebalanced[newIndex - 1].order,
+            rebalanced[newIndex].order
+          );
+        }
+      }
+
       return tx.task.update({
         where: { id: taskId },
         data: { columnId: targetColumnId, order: newOrder },
       });
     });
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("moveTask failed:", error);
     if (error instanceof Error) {
       if (error.message === "Task not found") {
         return { success: false, error: "Task not found" };
-      }
-      if (error.message === "Target column not found") {
-        return { success: false, error: "Target column not found" };
       }
     }
     return { success: false, error: "Failed to move task" };
@@ -267,6 +340,19 @@ export async function reorderTasksInColumn(
   }
 
   try {
+    const boardId = await findBoardIdForColumn(columnId);
+    if (!boardId) {
+      return { success: false, error: "Column not found" };
+    }
+    await requireBoardOwnership(boardId);
+
+    const matching = await prisma.task.count({
+      where: { id: { in: orderedTaskIds }, columnId, deletedAt: null },
+    });
+    if (matching !== orderedTaskIds.length) {
+      return { success: false, error: "Some tasks do not belong to this column" };
+    }
+
     await prisma.$transaction(
       orderedTaskIds.map((taskId, index) =>
         prisma.task.update({
@@ -276,7 +362,7 @@ export async function reorderTasksInColumn(
       )
     );
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("reorderTasksInColumn failed:", error);
@@ -295,11 +381,17 @@ export async function createSubtask(
   try {
     const { taskId, title } = validation.data;
 
+    const boardId = await findBoardIdForTask(taskId);
+    if (!boardId) {
+      return { success: false, error: "Parent task not found" };
+    }
+    await requireBoardOwnership(boardId);
+
     const subtask = await prisma.subtask.create({
       data: { taskId, title },
     });
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: subtask };
   } catch (error) {
     console.error("createSubtask failed:", error);
@@ -316,20 +408,34 @@ export async function toggleSubtask(
   }
 
   try {
-    const subtask = await prisma.subtask.findUnique({
-      where: { id: subtaskId },
-    });
-    if (!subtask) {
+    const boardId = await findBoardIdForSubtask(subtaskId);
+    if (!boardId) {
+      return { success: false, error: "Subtask not found" };
+    }
+    await requireBoardOwnership(boardId);
+
+    const result = await prisma.$queryRawUnsafe<Array<{
+      id: string;
+      taskId: string;
+      title: string;
+      isCompleted: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      deletedAt: Date | null;
+    }>>(
+      `UPDATE "Subtask"
+       SET "isCompleted" = NOT "isCompleted"
+       WHERE id = $1 AND "deletedAt" IS NULL
+       RETURNING *`,
+      subtaskId
+    );
+
+    if (result.length === 0) {
       return { success: false, error: "Subtask not found" };
     }
 
-    const updatedSubtask = await prisma.subtask.update({
-      where: { id: subtaskId },
-      data: { isCompleted: !subtask.isCompleted },
-    });
-
-    revalidatePath(REVALIDATE_PATH, "layout");
-    return { success: true, data: updatedSubtask };
+    revalidatePath(REVALIDATE_PATH, "page");
+    return { success: true, data: result[0] };
   } catch (error) {
     console.error("toggleSubtask failed:", error);
     return { success: false, error: "Failed to toggle subtask" };
@@ -345,8 +451,13 @@ export async function deleteSubtask(
   }
 
   try {
+    const boardId = await findBoardIdForSubtask(subtaskId);
+    if (!boardId) {
+      return { success: false, error: "Subtask not found" };
+    }
+    await requireBoardOwnership(boardId);
     await softDeleteSubtask(subtaskId);
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteSubtask failed:", error);

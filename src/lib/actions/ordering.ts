@@ -1,3 +1,5 @@
+import "server-only";
+
 export const GAP = 1000;
 
 export function computeInsertOrder(
@@ -13,4 +15,14 @@ export function computeInsertOrder(
   }
 
   return Math.floor((prev + next) / 2);
+}
+
+export function isOrderCollision(
+  prev: number | null,
+  next: number | null,
+  newOrder: number
+): boolean {
+  if (newOrder === prev || newOrder === next) return true;
+  if (prev !== null && next !== null && (next - prev) <= 1) return true;
+  return false;
 }

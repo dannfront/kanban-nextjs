@@ -1,11 +1,12 @@
 "use server";
+import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
-import { getSeedUserId } from "@/lib/auth";
+import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/auth";
 import {
   CreateBoardSchema,
   UpdateBoardSchema,
@@ -90,6 +91,7 @@ export async function updateBoard(
   }
 
   try {
+    await requireBoardOwnership(boardId);
     const { name, columns } = inputValidation.data;
 
     const board = await prisma.$transaction(async (tx) => {
@@ -109,10 +111,13 @@ export async function updateBoard(
 
         for (const column of columns) {
           if (column.id) {
-            await tx.column.update({
-              where: { id: column.id },
+            const updated = await tx.column.updateMany({
+              where: { id: column.id, boardId },
               data: { name: column.name, color: column.color },
             });
+            if (updated.count === 0) {
+              throw new Error("Column not found");
+            }
           } else {
             await tx.column.create({
               data: {
@@ -142,7 +147,7 @@ export async function updateBoard(
       return { success: false, error: "Board not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: board };
   } catch (error) {
     console.error("updateBoard failed:", error);
@@ -157,6 +162,7 @@ export async function deleteBoard(boardId: string): Promise<ActionResult<void>> 
   }
 
   try {
+    await requireBoardOwnership(boardId);
     await softDeleteBoard(boardId);
     revalidatePath(REVALIDATE_PATH, "layout");
     return { success: true, data: undefined };
@@ -168,12 +174,20 @@ export async function deleteBoard(boardId: string): Promise<ActionResult<void>> 
 
 export async function getBoards(): Promise<ActionResult<Board[]>> {
   try {
+    const userId = await getCurrentUserId();
     const boards = await prisma.board.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ownerId: userId },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    return { success: true, data: boards };
+    return { success: true, data: boards as Board[] };
   } catch (error) {
     console.error("getBoards failed:", error);
     return { success: false, error: "Failed to fetch boards" };
@@ -189,13 +203,27 @@ export async function getBoardWithColumns(
   }
 
   try {
+    await requireBoardOwnership(boardId);
+
     const board = await prisma.board.findUnique({
       where: { id: boardId, deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
         columns: {
           where: { deletedAt: null },
           orderBy: { order: "asc" },
-          include: {
+          select: {
+            id: true,
+            boardId: true,
+            name: true,
+            color: true,
+            order: true,
+            createdAt: true,
+            updatedAt: true,
             _count: {
               select: { tasks: { where: { deletedAt: null } } },
             },
@@ -208,7 +236,7 @@ export async function getBoardWithColumns(
       return { success: false, error: "Board not found" };
     }
 
-    return { success: true, data: board };
+    return { success: true, data: board as unknown as BoardWithColumns };
   } catch (error) {
     console.error("getBoardWithColumns failed:", error);
     return { success: false, error: "Failed to fetch board" };
