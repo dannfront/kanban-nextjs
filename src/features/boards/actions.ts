@@ -143,7 +143,7 @@ export async function updateBoard(
       return { success: false, error: "Board not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: board };
   } catch (error) {
     console.error("updateBoard failed:", error);
@@ -173,9 +173,16 @@ export async function getBoards(): Promise<ActionResult<Board[]>> {
     const boards = await prisma.board.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    return { success: true, data: boards };
+    return { success: true, data: boards as Board[] };
   } catch (error) {
     console.error("getBoards failed:", error);
     return { success: false, error: "Failed to fetch boards" };
@@ -193,11 +200,23 @@ export async function getBoardWithColumns(
   try {
     const board = await prisma.board.findUnique({
       where: { id: boardId, deletedAt: null },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
         columns: {
           where: { deletedAt: null },
           orderBy: { order: "asc" },
-          include: {
+          select: {
+            id: true,
+            boardId: true,
+            name: true,
+            color: true,
+            order: true,
+            createdAt: true,
+            updatedAt: true,
             _count: {
               select: { tasks: { where: { deletedAt: null } } },
             },
@@ -210,7 +229,7 @@ export async function getBoardWithColumns(
       return { success: false, error: "Board not found" };
     }
 
-    return { success: true, data: board };
+    return { success: true, data: board as unknown as BoardWithColumns };
   } catch (error) {
     console.error("getBoardWithColumns failed:", error);
     return { success: false, error: "Failed to fetch board" };

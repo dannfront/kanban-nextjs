@@ -42,7 +42,7 @@ export async function createColumn(
       data: { boardId, name, color, order: columnOrder },
     });
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: column };
   } catch (error) {
     console.error("createColumn failed:", error);
@@ -76,7 +76,7 @@ export async function updateColumn(
       data: inputValidation.data,
     });
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: column };
   } catch (error) {
     console.error("updateColumn failed:", error);
@@ -99,7 +99,7 @@ export async function deleteColumn(
     }
     await requireBoardOwnership(boardId);
     await softDeleteColumn(columnId);
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteColumn failed:", error);
@@ -138,7 +138,7 @@ export async function reorderColumns(
       )
     );
 
-    revalidatePath(REVALIDATE_PATH, "layout");
+    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("reorderColumns failed:", error);
