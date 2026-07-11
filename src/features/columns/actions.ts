@@ -5,6 +5,8 @@ import { type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteColumn } from "@/lib/actions/soft-delete";
+import { requireBoardOwnership, findBoardIdForColumn } from "@/lib/auth";
+import { GAP } from "@/lib/actions/ordering";
 import {
   CreateColumnSchema,
   UpdateColumnSchema,
@@ -13,7 +15,7 @@ import {
 } from "./schemas";
 
 const REVALIDATE_PATH = "/kanban-dashboard";
-const ORDER_GAP = 1000;
+const ORDER_GAP = GAP;
 
 export async function createColumn(
   input: unknown
@@ -24,6 +26,7 @@ export async function createColumn(
   }
 
   try {
+    await requireBoardOwnership(validation.data.boardId);
     const { boardId, name, color, order } = validation.data;
 
     let columnOrder = order;
@@ -62,6 +65,12 @@ export async function updateColumn(
   }
 
   try {
+    const boardId = await findBoardIdForColumn(columnId);
+    if (!boardId) {
+      return { success: false, error: "Column not found" };
+    }
+    await requireBoardOwnership(boardId);
+
     const column = await prisma.column.update({
       where: { id: columnId },
       data: inputValidation.data,
@@ -84,6 +93,11 @@ export async function deleteColumn(
   }
 
   try {
+    const boardId = await findBoardIdForColumn(columnId);
+    if (!boardId) {
+      return { success: false, error: "Column not found" };
+    }
+    await requireBoardOwnership(boardId);
     await softDeleteColumn(columnId);
     revalidatePath(REVALIDATE_PATH, "layout");
     return { success: true, data: undefined };
@@ -106,6 +120,15 @@ export async function reorderColumns(
   }
 
   try {
+    await requireBoardOwnership(boardId);
+
+    const matching = await prisma.column.count({
+      where: { id: { in: orderedColumnIds }, boardId, deletedAt: null },
+    });
+    if (matching !== orderedColumnIds.length) {
+      return { success: false, error: "Some columns do not belong to this board" };
+    }
+
     await prisma.$transaction(
       orderedColumnIds.map((columnId, index) =>
         prisma.column.update({

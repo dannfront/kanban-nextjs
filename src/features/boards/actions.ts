@@ -5,7 +5,7 @@ import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
-import { getSeedUserId } from "@/lib/auth";
+import { getSeedUserId, requireBoardOwnership } from "@/lib/auth";
 import {
   CreateBoardSchema,
   UpdateBoardSchema,
@@ -90,6 +90,7 @@ export async function updateBoard(
   }
 
   try {
+    await requireBoardOwnership(boardId);
     const { name, columns } = inputValidation.data;
 
     const board = await prisma.$transaction(async (tx) => {
@@ -109,8 +110,8 @@ export async function updateBoard(
 
         for (const column of columns) {
           if (column.id) {
-            await tx.column.update({
-              where: { id: column.id },
+            await tx.column.updateMany({
+              where: { id: column.id, boardId },
               data: { name: column.name, color: column.color },
             });
           } else {
@@ -157,6 +158,7 @@ export async function deleteBoard(boardId: string): Promise<ActionResult<void>> 
   }
 
   try {
+    await requireBoardOwnership(boardId);
     await softDeleteBoard(boardId);
     revalidatePath(REVALIDATE_PATH, "layout");
     return { success: true, data: undefined };
