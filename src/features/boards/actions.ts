@@ -5,7 +5,7 @@ import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
-import { getSeedUserId, requireBoardOwnership } from "@/lib/auth";
+import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/auth";
 import {
   CreateBoardSchema,
   UpdateBoardSchema,
@@ -110,10 +110,13 @@ export async function updateBoard(
 
         for (const column of columns) {
           if (column.id) {
-            await tx.column.updateMany({
+            const updated = await tx.column.updateMany({
               where: { id: column.id, boardId },
               data: { name: column.name, color: column.color },
             });
+            if (updated.count === 0) {
+              throw new Error("Column not found");
+            }
           } else {
             await tx.column.create({
               data: {
@@ -170,8 +173,9 @@ export async function deleteBoard(boardId: string): Promise<ActionResult<void>> 
 
 export async function getBoards(): Promise<ActionResult<Board[]>> {
   try {
+    const userId = await getCurrentUserId();
     const boards = await prisma.board.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ownerId: userId },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -198,6 +202,8 @@ export async function getBoardWithColumns(
   }
 
   try {
+    await requireBoardOwnership(boardId);
+
     const board = await prisma.board.findUnique({
       where: { id: boardId, deletedAt: null },
       select: {

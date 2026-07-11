@@ -154,10 +154,13 @@ export async function updateTask(
       if (subtasks && subtasks.length > 0) {
         for (const subtask of subtasks) {
           if (subtask.id) {
-            await tx.subtask.update({
-              where: { id: subtask.id },
+            const updated = await tx.subtask.updateMany({
+              where: { id: subtask.id, taskId },
               data: { title: subtask.title },
             });
+            if (updated.count === 0) {
+              throw new Error("Subtask not found");
+            }
           } else {
             await tx.subtask.create({
               data: {

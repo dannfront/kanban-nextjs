@@ -1,3 +1,5 @@
+import "server-only";
+
 export const GAP = 1000;
 
 export function computeInsertOrder(

@@ -1,3 +1,4 @@
+import "server-only";
 import type { z } from "zod";
 
 export type ActionResult<T> =

@@ -71,9 +71,11 @@ export async function updateColumn(
     }
     await requireBoardOwnership(boardId);
 
+    const { order: _ignored, ...safeData } = inputValidation.data;
+
     const column = await prisma.column.update({
       where: { id: columnId },
-      data: inputValidation.data,
+      data: safeData,
     });
 
     revalidatePath(REVALIDATE_PATH, "page");
