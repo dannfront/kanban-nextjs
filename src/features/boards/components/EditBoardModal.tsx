@@ -4,8 +4,11 @@ import { useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { useModalStore } from "@/store/useModalStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useBoards } from "@/features/boards/hooks/use-boards";
+import { useBoard } from "@/features/boards/hooks/use-board";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useUpdateBoard } from "@/features/boards/hooks/use-update-board";
+import { useDeleteColumn } from "@/features/columns/hooks/use-delete-column";
 import {
   BoardFormFields,
   type BoardFormData,
@@ -20,22 +23,22 @@ interface EditBoardModalProps {
 export function EditBoardModal({ boardId }: EditBoardModalProps) {
   const closeModal = useModalStore((state) => state.closeModal);
   const openModal = useModalStore((state) => state.openModal);
-  const allBoards = useBoardStore((state) => state.boards);
-  const allColumns = useBoardStore((state) => state.columns);
-  const updateBoard = useBoardStore((state) => state.updateBoard);
-  const deleteColumn = useBoardStore((state) => state.deleteColumn);
+  const { data: boards } = useBoards();
+  const allBoards = boards ?? [];
+  const { data: boardData } = useBoard(boardId);
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+  const updateBoard = useUpdateBoard(boardId);
+  const deleteColumn = useDeleteColumn(boardId);
+
+  const boardColumns =
+    boardData?.columns
+      .filter((column) => column.boardId === boardId)
+      .sort((a, b) => a.order - b.order) ?? [];
 
   const board = useMemo(
     () => allBoards.find((b) => b.id === boardId),
     [allBoards, boardId]
-  );
-
-  const boardColumns = useMemo(
-    () =>
-      allColumns
-        .filter((column) => column.boardId === boardId)
-        .sort((a, b) => a.order - b.order),
-    [allColumns, boardId]
   );
 
   const defaultValues = useMemo(
@@ -64,18 +67,20 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
     );
   }
 
-  const handleSubmit = (data: BoardFormData) => {
-    updateBoard(boardId, {
-      name: data.name,
-      columns: data.columns,
-    });
-    closeModal();
+  const handleSubmit = async (data: BoardFormData) => {
+    try {
+      await updateBoard.mutateAsync({
+        name: data.name,
+        columns: data.columns,
+      });
+      closeModal();
+    } catch (error) {
+      console.error("Failed to update board", error);
+    }
   };
 
   const handleRemoveColumn = (columnId: string, columnName: string) => {
-    const hasTasks = useTaskStore
-      .getState()
-      .tasks.some((task) => task.columnId === columnId);
+    const hasTasks = allTasks.some((task) => task.columnId === columnId);
 
     if (hasTasks) {
       openModal("confirm-delete-column", {
@@ -86,7 +91,7 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
       return;
     }
 
-    deleteColumn(boardId, columnId);
+    deleteColumn.mutate(columnId);
   };
 
   return (
@@ -104,6 +109,7 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
           excludeBoardId={boardId}
           onRemoveColumn={handleRemoveColumn}
           onSubmit={handleSubmit}
+          allColumns={boardColumns}
         />
       </div>
     </Modal>

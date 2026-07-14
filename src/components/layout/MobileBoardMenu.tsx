@@ -7,15 +7,12 @@ import {
   useActiveModal,
   useModalStore,
 } from "@/store/useModalStore";
-import type { Board } from "@/features/boards/types";
+import { useBoards } from "@/features/boards/hooks/use-boards";
 
-interface MobileBoardMenuProps {
-  boards: Board[];
-}
-
-export function MobileBoardMenu({ boards }: MobileBoardMenuProps) {
+export function MobileBoardMenu() {
   const activeModal = useActiveModal();
   const closeModal = useModalStore((state) => state.closeModal);
+  const { data: boards = [] } = useBoards();
 
   return (
     <Modal isOpen={activeModal === "mobile-menu"} onClose={closeModal}>

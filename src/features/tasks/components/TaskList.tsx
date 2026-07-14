@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useParams } from "next/navigation";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
 import { TaskCard } from "./TaskCard";
 
 interface TaskListProps {
@@ -9,15 +10,25 @@ interface TaskListProps {
 }
 
 export function TaskList({ columnId }: TaskListProps) {
-  const allTasks = useTaskStore((s) => s.tasks);
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
+  const { data: allTasks, isError } = useBoardTasks(boardId);
 
   const tasks = useMemo(
     () =>
-      allTasks
+      (allTasks ?? [])
         .filter((t) => t.columnId === columnId)
         .toSorted((a, b) => a.order - b.order),
     [allTasks, columnId]
   );
+
+  if (isError) {
+    return (
+      <p className="text-sm text-[var(--color-red)]">
+        Failed to load tasks.
+      </p>
+    );
+  }
 
   if (tasks.length === 0) {
     return (

@@ -5,8 +5,8 @@ import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { Button } from "@/components/ui/Button";
 import { useModalStore } from "@/store/useModalStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useDeleteColumn } from "@/features/columns/hooks/use-delete-column";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
 
@@ -22,18 +22,26 @@ export function ConfirmDeleteColumnModal({
   columnName,
 }: ConfirmDeleteColumnModalProps) {
   const closeModal = useModalStore((state) => state.closeModal);
-  const deleteColumn = useBoardStore((state) => state.deleteColumn);
-  const count = useTaskStore((state) =>
-    state.tasks.filter((task) => task.columnId === columnId).length
+  const deleteColumn = useDeleteColumn(boardId);
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+
+  const count = useMemo(
+    () => allTasks.filter((task) => task.columnId === columnId).length,
+    [allTasks, columnId]
   );
 
   const taskLabel = useMemo(() => {
     return `${count} task${count === 1 ? "" : "s"}`;
   }, [count]);
 
-  const handleDelete = () => {
-    deleteColumn(boardId, columnId);
-    closeModal();
+  const handleDelete = async () => {
+    try {
+      await deleteColumn.mutateAsync(columnId);
+      closeModal();
+    } catch (error) {
+      console.error("Failed to delete column", error);
+    }
   };
 
   return (
@@ -57,6 +65,7 @@ export function ConfirmDeleteColumnModal({
             size="sm"
             className="w-full"
             onClick={handleDelete}
+            disabled={deleteColumn.isPending}
           >
             Delete
           </Button>

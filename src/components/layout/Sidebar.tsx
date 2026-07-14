@@ -2,19 +2,16 @@
 
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/useUIStore";
+import { useBoards } from "@/features/boards/hooks/use-boards";
 import { ThemeToggle } from "./ThemeToggle";
 import { ThemeLogo } from "@/components/ui/ThemeLogo";
 import { BoardNavLinks } from "@/features/boards/components/BoardNavLinks";
-import type { Board } from "@/features/boards/types";
 import iconHideSidebar from "@/assets/icon-hide-sidebar.svg";
 import iconShowSidebar from "@/assets/icon-show-sidebar.svg";
 
-interface SidebarProps {
-  boards: Board[];
-}
-
-export function Sidebar({ boards }: SidebarProps) {
+export function Sidebar() {
   const { desktopHidden, toggleDesktop } = useUIStore();
+  const { data: boards = [] } = useBoards();
 
   return (
     <>

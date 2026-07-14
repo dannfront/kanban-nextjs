@@ -1,10 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
+import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { Button } from "@/components/ui/Button";
 import { useModalStore } from "@/store/useModalStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useDeleteTask } from "@/features/tasks/hooks/use-delete-task";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
 
@@ -13,10 +16,16 @@ interface DeleteTaskModalProps {
 }
 
 export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
-  const deleteTask = useTaskStore((state) => state.deleteTask);
-  const task = useTaskStore((state) =>
-    state.tasks.find((t) => t.id === taskId)
+  const deleteTask = useDeleteTask(boardId);
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+
+  const task = useMemo(
+    () => allTasks.find((t) => t.id === taskId),
+    [allTasks, taskId],
   );
 
   if (!task) {
@@ -32,9 +41,13 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
     );
   }
 
-  const handleDelete = () => {
-    deleteTask(taskId);
-    closeModal();
+  const handleDelete = async () => {
+    try {
+      await deleteTask.mutateAsync(taskId);
+      closeModal();
+    } catch (error) {
+      console.error("Failed to delete task", error);
+    }
   };
 
   return (
@@ -58,6 +71,7 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
             size="sm"
             className="w-full"
             onClick={handleDelete}
+            disabled={deleteTask.isPending}
           >
             Delete
           </Button>

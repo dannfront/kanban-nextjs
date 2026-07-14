@@ -1,7 +1,11 @@
-import { getBoard, getColumnsForBoard } from "@/lib/boards";
-import { getTasksForBoard } from "@/lib/tasks";
+import { notFound } from "next/navigation";
+import { getBoardWithColumns } from "@/features/boards/actions";
+import { getTasksWithSubtasks } from "@/features/tasks/actions";
 import { EmptyBoard } from "@/features/boards/components/EmptyBoard";
 import { BoardView } from "@/features/boards/components/columns/BoardView";
+import { getQueryClient } from "@/lib/query-client";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { boardKeys } from "@/features/boards/hooks/query-keys";
 
 interface PageProps {
   params: Promise<{ boardId: string }>;
@@ -9,14 +13,47 @@ interface PageProps {
 
 export default async function BoardPage({ params }: PageProps) {
   const { boardId } = await params;
-  const board = getBoard(boardId);
-  const [columns, tasks] = board
-    ? await Promise.all([getColumnsForBoard(boardId), getTasksForBoard(boardId)])
-    : [[], []];
 
-  if (columns.length === 0) {
-    return <EmptyBoard />;
+  // SSR prefetch board detail + tasks into TanStack Query cache
+  const queryClient = getQueryClient();
+  try {
+    await Promise.all([
+      queryClient.fetchQuery({
+        queryKey: boardKeys.detail(boardId),
+        queryFn: async () => {
+          const result = await getBoardWithColumns(boardId);
+          if (!result.success) throw new Error(result.error);
+          return result.data;
+        },
+      }),
+      queryClient.fetchQuery({
+        queryKey: boardKeys.tasks(boardId),
+        queryFn: async () => {
+          const result = await getTasksWithSubtasks(boardId);
+          if (!result.success) throw new Error(result.error);
+          return result.data;
+        },
+      }),
+    ]);
+  } catch {
+    notFound();
   }
 
-  return <BoardView initialColumns={columns} initialTasks={tasks} />;
+  // Check if board has columns from the prefetched query cache
+  const boardData = queryClient.getQueryData(boardKeys.detail(boardId)) as
+    | { columns: unknown[] }
+    | undefined;
+  if (!boardData?.columns?.length) {
+    return (
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <EmptyBoard />
+      </HydrationBoundary>
+    );
+  }
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <BoardView />
+    </HydrationBoundary>
+  );
 }

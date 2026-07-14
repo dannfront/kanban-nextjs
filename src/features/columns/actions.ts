@@ -1,7 +1,6 @@
 "use server";
 import "server-only";
 
-import { revalidatePath } from "next/cache";
 import { type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
@@ -15,7 +14,6 @@ import {
   ReorderColumnsSchema,
 } from "./schemas";
 
-const REVALIDATE_PATH = "/kanban-dashboard";
 const ORDER_GAP = GAP;
 
 export async function createColumn(
@@ -43,7 +41,6 @@ export async function createColumn(
       data: { boardId, name, color, order: columnOrder },
     });
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: column };
   } catch (error) {
     console.error("createColumn failed:", error);
@@ -79,7 +76,6 @@ export async function updateColumn(
       data: safeData,
     });
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: column };
   } catch (error) {
     console.error("updateColumn failed:", error);
@@ -102,7 +98,6 @@ export async function deleteColumn(
     }
     await requireBoardOwnership(boardId);
     await softDeleteColumn(columnId);
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteColumn failed:", error);
@@ -141,7 +136,6 @@ export async function reorderColumns(
       )
     );
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("reorderColumns failed:", error);

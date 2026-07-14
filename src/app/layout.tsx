@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { QueryProvider } from "@/components/QueryProvider";
 import { StoreHydration } from "@/store/StoreHydration";
 import "./globals.css";
 
@@ -28,7 +29,7 @@ export default function RootLayout({
     >
       <body className="h-full min-h-full flex flex-col font-sans">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
         <StoreHydration />
       </body>

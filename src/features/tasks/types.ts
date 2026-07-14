@@ -9,7 +9,6 @@ export interface Task {
   columnId: string;
   title: string;
   description: string;
-  status: string;
   order: number;
   subtasks: Subtask[];
 }

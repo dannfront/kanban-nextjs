@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { Controller, useFieldArray, useFormState } from "react-hook-form";
 import type { Control, UseFormGetValues } from "react-hook-form";
 import Image from "next/image";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import iconCross from "@/assets/icon-cross.svg";
@@ -15,6 +14,7 @@ interface ColumnFieldsProps {
   getValues: UseFormGetValues<BoardFormData>;
   onRemoveColumn?: (columnId: string, columnName: string) => void;
   label?: string;
+  allColumns?: { id: string }[];
 }
 
 export function ColumnFields({
@@ -22,9 +22,8 @@ export function ColumnFields({
   getValues,
   onRemoveColumn,
   label = "Columns",
+  allColumns,
 }: ColumnFieldsProps) {
-  const allColumns = useBoardStore((state) => state.columns);
-
   const { fields, append, remove } = useFieldArray<
     BoardFormData,
     "columns",
@@ -38,6 +37,8 @@ export function ColumnFields({
   const { errors } = useFormState({ control });
 
   useEffect(() => {
+    if (!allColumns) return;
+
     const currentColumns = getValues("columns");
     const columnIds = new Set(allColumns.map((column) => column.id));
     const removedIndices = currentColumns

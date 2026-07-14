@@ -1,27 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
 import { useUIStore } from "@/store/useUIStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
 import { TopMenu } from "./TopMenu";
 import { MobileBoardMenu } from "./MobileBoardMenu";
 import { ModalRouter } from "@/store/ModalRouter";
-import type { Board } from "@/features/boards/types";
 
-interface DashboardShellProps {
-  boards: Board[];
-  children: React.ReactNode;
-}
-
-export function DashboardShell({ boards, children }: DashboardShellProps) {
+export function DashboardShell({ children }: { children: React.ReactNode }) {
   const desktopHidden = useUIStore((state) => state.desktopHidden);
-  const setBoards = useBoardStore((state) => state.setBoards);
-
-  useEffect(() => {
-    setBoards(boards);
-  }, [boards, setBoards]);
 
   return (
     <div
@@ -30,10 +17,10 @@ export function DashboardShell({ boards, children }: DashboardShellProps) {
         !desktopHidden && "md:grid-cols-[260px_1fr]"
       )}
     >
-      <Sidebar boards={boards} />
-      <MobileBoardMenu boards={boards} />
+      <Sidebar />
+      <MobileBoardMenu />
       <div className="flex min-w-0 flex-col">
-        <TopMenu boards={boards} />
+        <TopMenu />
         <main className="flex-1 overflow-auto">
           {children}
         </main>

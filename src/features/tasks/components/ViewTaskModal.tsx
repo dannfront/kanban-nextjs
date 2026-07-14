@@ -1,10 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { useModalStore } from "@/store/useModalStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useBoard } from "@/features/boards/hooks/use-board";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useToggleSubtask } from "@/features/tasks/hooks/use-toggle-subtask";
+import { useMoveTask } from "@/features/tasks/hooks/use-move-task";
 import { TaskNotFound } from "@/features/tasks/components/TaskNotFound";
 import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
 import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
@@ -21,17 +24,36 @@ interface ViewTaskModalProps {
 }
 
 export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
   const openModal = useModalStore((state) => state.openModal);
-  const task = useTaskStore((state) =>
-    state.tasks.find((t) => t.id === taskId)
-  );
-  const toggleSubtask = useTaskStore((state) => state.toggleSubtask);
-  const moveTask = useTaskStore((state) => state.moveTask);
-  const columns = useBoardStore((state) => state.columns);
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+  const { data: boardData } = useBoard(boardId);
+  const columns = boardData?.columns ?? [];
+  const toggleSubtask = useToggleSubtask(boardId);
+  const moveTaskMutation = useMoveTask(boardId);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const task = useMemo(
+    () => allTasks.find((t) => t.id === taskId),
+    [allTasks, taskId],
+  );
+
+  const statusOptions = useMemo(
+    () =>
+      columns
+        .filter((c) => c.boardId === boardId)
+        .sort((a, b) => a.order - b.order)
+        .map((column) => ({
+          value: column.id,
+          label: column.name,
+        })),
+    [columns, boardId],
+  );
 
   if (!task) {
     return (
@@ -49,11 +71,6 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
   const completedCount = task.subtasks.filter((s) => s.isCompleted).length;
   const totalCount = task.subtasks.length;
 
-  const currentColumn = columns.find((c) => c.id === task.columnId);
-  const statusOptions = columns.filter(
-    (c) => c.boardId === currentColumn?.boardId
-  );
-
   const handleEditTask = () => {
     setMenuOpen(false);
     openModal("edit-task", { taskId });
@@ -62,6 +79,21 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
   const handleDeleteTask = () => {
     setMenuOpen(false);
     openModal("delete-task", { taskId });
+  };
+
+  const handleStatusChange = (newColumnId: string) => {
+    if (newColumnId === task.columnId) return;
+
+    const targetTasks = allTasks.filter(
+      (t) => t.columnId === newColumnId && t.id !== taskId,
+    );
+    const newIndex = targetTasks.length;
+
+    moveTaskMutation.mutate({
+      taskId,
+      targetColumnId: newColumnId,
+      newIndex,
+    });
   };
 
   return (
@@ -112,7 +144,9 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
             >
               <Checkbox
                 checked={subtask.isCompleted}
-                onChange={() => toggleSubtask({ taskId, subtaskId: subtask.id })}
+                onChange={() =>
+                  toggleSubtask.mutate(subtask.id)
+                }
                 label={subtask.title}
                 strikethroughWhenChecked
               />
@@ -124,12 +158,9 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
       <Select
         id="task-status"
         label="Current Status"
-        value={task.status}
-        onChange={(status) => moveTask(taskId, status)}
-        options={statusOptions.map((column) => ({
-          value: column.name,
-          label: column.name,
-        }))}
+        value={task.columnId}
+        onChange={handleStatusChange}
+        options={statusOptions}
         className="mt-2"
       />
     </Modal>

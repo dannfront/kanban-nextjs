@@ -1,11 +1,23 @@
 "use client";
 
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useParams } from "next/navigation";
+import { useBoard } from "@/features/boards/hooks/use-board";
 import { Column } from "./Column";
 import { NewColumnPlaceholder } from "./NewColumnPlaceholder";
 
 export function ColumnList() {
-  const columns = useBoardStore((state) => state.columns);
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
+  const { data: boardData, isError } = useBoard(boardId);
+  const columns = boardData?.columns ?? [];
+
+  if (isError) {
+    return (
+      <p className="text-sm text-[var(--color-red)]">
+        Failed to load columns.
+      </p>
+    );
+  }
 
   return (
     <div className="flex h-full items-start gap-6">

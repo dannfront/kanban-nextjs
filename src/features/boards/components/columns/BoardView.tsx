@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useParams } from "next/navigation";
 import { ColumnList } from "./ColumnList";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useBoard } from "@/features/boards/hooks/use-board";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useMoveTask } from "@/features/tasks/hooks/use-move-task";
+import { useReorderTasks } from "@/features/tasks/hooks/use-reorder-tasks";
 import {
   DndProvider,
   isSortable,
@@ -11,27 +14,24 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from "@/lib/dnd";
-import type { Column } from "@/features/boards/types";
-import type { Task } from "@/features/tasks/types";
 
-interface BoardViewProps {
-  initialColumns: Column[];
-  initialTasks: Task[];
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((val, idx) => val === b[idx]);
 }
 
-export function BoardView({ initialColumns, initialTasks }: BoardViewProps) {
-  const columns = useBoardStore((state) => state.columns);
-  const setColumns = useBoardStore((state) => state.setColumns);
-  const tasks = useTaskStore((state) => state.tasks);
-  const setTasks = useTaskStore((state) => state.setTasks);
+export function BoardView() {
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
 
-  useEffect(() => {
-    setColumns(initialColumns);
-  }, [initialColumns, setColumns]);
+  const { data: boardData } = useBoard(boardId);
+  const columns = boardData?.columns ?? [];
 
-  useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks, setTasks]);
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+
+  const moveTaskMutation = useMoveTask(boardId);
+  const reorderTasksMutation = useReorderTasks(boardId);
 
   const tasksByColumn = useMemo(() => {
     const grouped: Record<string, string[]> = {};
@@ -40,9 +40,9 @@ export function BoardView({ initialColumns, initialTasks }: BoardViewProps) {
       grouped[column.id] = [];
     }
 
-    const orderByTaskId = new Map(tasks.map((task) => [task.id, task.order]));
+    const orderByTaskId = new Map(allTasks.map((task) => [task.id, task.order]));
 
-    for (const task of tasks) {
+    for (const task of allTasks) {
       if (!grouped[task.columnId]) {
         grouped[task.columnId] = [];
       }
@@ -56,23 +56,15 @@ export function BoardView({ initialColumns, initialTasks }: BoardViewProps) {
     }
 
     return grouped;
-  }, [columns, tasks]);
+  }, [columns, allTasks]);
 
   const tasksByColumnSnapshot = useRef<Record<string, string[]>>({});
-  const columnNameById = useMemo(
-    () => new Map(columns.map((column) => [column.id, column.name])),
-    [columns]
-  );
 
   const handleDragStart = useCallback(() => {
-    // Deep clone so the snapshot is isolated from future re-renders.
     tasksByColumnSnapshot.current = structuredClone(tasksByColumn);
   }, [tasksByColumn]);
 
   // Prevent OptimisticSortingPlugin from moving DOM nodes directly.
-  // This avoids "removeChild" and "useInsertionEffect" errors caused by
-  // dnd-kit manipulating the DOM outside of React's control.
-  // DragOverlay inside DndProvider provides visual feedback instead.
   const handleDragOver = useCallback((event: DragOverEvent) => {
     event.preventDefault();
   }, []);
@@ -87,40 +79,41 @@ export function BoardView({ initialColumns, initialTasks }: BoardViewProps) {
       const { group } = source;
       if (!group) return;
 
+      const taskId = String(source.id);
+      const sourceColumnId = String(group);
+
       const reordered = move(tasksByColumnSnapshot.current, event);
 
-      const newPositions = new Map<
-        string,
-        { columnId: string; order: number; status: string }
-      >();
-
-      for (const [columnId, ids] of Object.entries(reordered)) {
-        const status = columnNameById.get(columnId) ?? "";
-        ids.forEach((id, index) => {
-          newPositions.set(String(id), {
-            columnId,
-            order: index,
-            status,
-          });
-        });
+      // Find where the dragged task ended up
+      let targetColumnId: string | undefined;
+      let newIndex = -1;
+      for (const [colId, ids] of Object.entries(reordered)) {
+        const idx = ids.indexOf(taskId);
+        if (idx !== -1) {
+          targetColumnId = colId;
+          newIndex = idx;
+          break;
+        }
       }
 
-      const nextTasks = tasks.map((task) => {
-        const next = newPositions.get(task.id);
-        if (!next) return task;
-        if (
-          next.columnId === task.columnId &&
-          next.order === task.order &&
-          next.status === task.status
-        ) {
-          return task;
-        }
-        return { ...task, ...next };
-      });
+      if (!targetColumnId) return;
 
-      setTasks(nextTasks);
+      if (targetColumnId !== sourceColumnId) {
+        // Cross-column move — useMoveTask handles optimistic update + invalidation
+        moveTaskMutation.mutate({ taskId, targetColumnId, newIndex });
+      } else {
+        // Same-column reorder — only fire if order actually changed
+        const snapshotIds = tasksByColumnSnapshot.current[sourceColumnId];
+        const newIds = reordered[sourceColumnId];
+        if (snapshotIds && newIds && !arraysEqual(snapshotIds, newIds)) {
+          reorderTasksMutation.mutate({
+            columnId: sourceColumnId,
+            orderedTaskIds: newIds,
+          });
+        }
+      }
     },
-    [columnNameById, setTasks, tasks]
+    [moveTaskMutation, reorderTasksMutation]
   );
 
   return (

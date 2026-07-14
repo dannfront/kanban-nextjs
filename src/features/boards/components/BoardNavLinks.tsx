@@ -3,24 +3,25 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useBoards } from "@/features/boards/hooks/use-boards";
 import { useModalStore } from "@/store/useModalStore";
 import type { Board } from "@/features/boards/types";
 import iconBoard from "@/assets/icon-board.svg";
 
 interface BoardNavLinksProps {
-  boards: Board[];
+  boards?: Board[];
   onNavigate?: () => void;
 }
 
-export function BoardNavLinks({ boards: _boards, onNavigate }: BoardNavLinksProps) {
+export function BoardNavLinks({ boards: fallbackBoards, onNavigate }: BoardNavLinksProps) {
   const params = useParams<{ boardId?: string }>();
   const boardId = params.boardId;
-  const storeBoards = useBoardStore((state) => state.boards);
+  const { data: queryBoards } = useBoards();
   const openModal = useModalStore((state) => state.openModal);
 
-  // Use store boards if available, fallback to prop for SSR/initial render
-  const boards = storeBoards.length > 0 ? storeBoards : _boards;
+  // Use query cache boards when available (populated by SSR HydrationBoundary),
+  // fall back to prop for SSR/initial render edge cases
+  const boards = queryBoards && queryBoards.length > 0 ? queryBoards : fallbackBoards ?? [];
 
   return (
     <nav>

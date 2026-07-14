@@ -3,23 +3,20 @@
 import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useModalStore } from "@/store/useModalStore";
+import { useBoards } from "@/features/boards/hooks/use-boards";
 import { Button } from "@/components/ui/Button";
 import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { DropdownMenuItem } from "@/components/ui/DropdownMenuItem";
-import type { Board } from "@/features/boards/types";
 import Image from "next/image";
 import logoMobile from "@/assets/logo-mobile.svg";
 import iconAddTaskMobile from "@/assets/icon-add-task-mobile.svg";
 import iconChevronDown from "@/assets/icon-chevron-down.svg";
 
-interface TopMenuProps {
-  boards: Board[];
-}
-
-export function TopMenu({ boards }: TopMenuProps) {
+export function TopMenu() {
   const params = useParams<{ boardId?: string }>();
   const boardId = params.boardId;
+  const { data: boards = [] } = useBoards();
   const activeBoard = boards.find((board) => board.id === boardId);
   const boardName = activeBoard?.name ?? boardId ?? "";
 

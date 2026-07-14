@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { useModalStore } from "@/store/useModalStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
-import { useTaskStore } from "@/features/tasks/store/useTaskStore";
+import { useBoard } from "@/features/boards/hooks/use-board";
+import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useUpdateTask } from "@/features/tasks/hooks/use-update-task";
 import { TaskForm, type TaskFormData } from "./TaskForm";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
@@ -15,15 +17,22 @@ interface EditTaskModalProps {
 }
 
 export function EditTaskModal({ taskId }: EditTaskModalProps) {
+  const params = useParams<{ boardId: string }>();
+  const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
-  const task = useTaskStore((state) =>
-    state.tasks.find((task) => task.id === taskId)
+  const { data: tasks } = useBoardTasks(boardId);
+  const allTasks = tasks ?? [];
+  const task = useMemo(
+    () => allTasks.find((t) => t.id === taskId),
+    [allTasks, taskId],
   );
-  const updateTask = useTaskStore((state) => state.updateTask);
-  const columns = useBoardStore((state) => state.columns);
+  const { data: boardData } = useBoard(boardId);
+  const columns = boardData?.columns ?? [];
+  const updateTask = useUpdateTask(boardId);
+
   const taskColumn = useMemo(
     () => columns.find((column) => column.id === task?.columnId),
-    [columns, task?.columnId]
+    [columns, task?.columnId],
   );
   const boardColumns = useMemo(
     () =>
@@ -32,7 +41,7 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
             .filter((column) => column.boardId === taskColumn.boardId)
             .sort((a, b) => a.order - b.order)
         : [],
-    [columns, taskColumn]
+    [columns, taskColumn],
   );
 
   if (!task || !taskColumn) {
@@ -50,50 +59,42 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
     );
   }
 
-  const handleSubmit = (data: TaskFormData) => {
-    const column = boardColumns.find((column) => column.name === data.status);
-
-    const subtasks = data.subtasks.map((subtask) => {
-      if (subtask.id) {
-        const existingSubtask = task.subtasks.find(
-          (existing) => existing.id === subtask.id
-        );
+  const handleSubmit = async (data: TaskFormData) => {
+    const subtasks = data.subtasks
+      .filter((s) => s.title.trim().length > 0)
+      .map((subtask) => {
+        if (subtask.id) {
+          return {
+            id: subtask.id,
+            title: subtask.title,
+          };
+        }
         return {
-          id: subtask.id,
           title: subtask.title,
-          isCompleted: existingSubtask?.isCompleted ?? false,
         };
-      }
+      });
 
-      return {
-        id: crypto.randomUUID(),
-        title: subtask.title,
-        isCompleted: false,
-      };
-    });
-
-    const updates: Parameters<typeof updateTask>[1] = {
+    const input: {
+      title?: string;
+      description?: string;
+      columnId?: string;
+      subtasks?: { id?: string; title: string }[];
+    } = {
       title: data.title,
       description: data.description,
-      status: data.status,
       subtasks,
     };
 
-    if (column && column.id !== task.columnId) {
-      const columnTasks = useTaskStore
-        .getState()
-        .tasks.filter((task) => task.columnId === column.id);
-      const maxOrder =
-        columnTasks.length > 0
-          ? Math.max(...columnTasks.map((task) => task.order))
-          : -1;
-
-      updates.columnId = column.id;
-      updates.order = maxOrder + 1;
+    if (data.columnId !== task.columnId) {
+      input.columnId = data.columnId;
     }
 
-    updateTask(taskId, updates);
-    closeModal();
+    try {
+      await updateTask.mutateAsync({ taskId, input });
+      closeModal();
+    } catch (error) {
+      console.error("Failed to update task", error);
+    }
   };
 
   return (

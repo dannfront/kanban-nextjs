@@ -6,7 +6,8 @@ import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { Button } from "@/components/ui/Button";
 import { useModalStore } from "@/store/useModalStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useBoards } from "@/features/boards/hooks/use-boards";
+import { useDeleteBoard } from "@/features/boards/hooks/use-delete-board";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
 
@@ -18,8 +19,9 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
   const router = useRouter();
   const params = useParams<{ boardId?: string }>();
   const closeModal = useModalStore((state) => state.closeModal);
-  const deleteBoard = useBoardStore((state) => state.deleteBoard);
-  const allBoards = useBoardStore((state) => state.boards);
+  const deleteBoard = useDeleteBoard();
+  const { data: boards } = useBoards();
+  const allBoards = boards ?? [];
 
   const board = useMemo(
     () => allBoards.find((b) => b.id === boardId),
@@ -39,16 +41,20 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
     );
   }
 
-  const handleDelete = () => {
-    deleteBoard(boardId);
+  const handleDelete = async () => {
+    try {
+      await deleteBoard.mutateAsync(boardId);
 
-    if (params.boardId === boardId) {
-      const remainingBoards = allBoards.filter((b) => b.id !== boardId);
-      const nextBoard = remainingBoards[0];
-      router.push(nextBoard ? `/kanban-dashboard/${nextBoard.id}` : "/");
+      if (params.boardId === boardId) {
+        const remainingBoards = allBoards.filter((b) => b.id !== boardId);
+        const nextBoard = remainingBoards[0];
+        router.push(nextBoard ? `/kanban-dashboard/${nextBoard.id}` : "/");
+      }
+
+      closeModal();
+    } catch (error) {
+      console.error("Failed to delete board", error);
     }
-
-    closeModal();
   };
 
   return (
@@ -72,6 +78,7 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
             size="sm"
             className="w-full"
             onClick={handleDelete}
+            disabled={deleteBoard.isPending}
           >
             Delete
           </Button>

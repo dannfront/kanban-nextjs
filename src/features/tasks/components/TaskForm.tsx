@@ -6,7 +6,7 @@ import type { Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useBoard } from "@/features/boards/hooks/use-board";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
@@ -24,7 +24,7 @@ const taskFormSchema = z.object({
   title: z.string().min(1, "Can't be empty").max(255),
   description: z.string().max(1000).optional().default(""),
   subtasks: z.array(subtaskSchema).default([]),
-  status: z.string().min(1, "Can't be empty"),
+  columnId: z.string().min(1, "Can't be empty"),
 });
 
 export type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -44,25 +44,22 @@ export function TaskForm({
   mode,
   onSubmit,
 }: TaskFormProps) {
-  const allColumns = useBoardStore((state) => state.columns);
-  const columns = useMemo(
-    () =>
-      allColumns
-        .filter((column) => column.boardId === boardId)
-        .sort((a, b) => a.order - b.order),
-    [allColumns, boardId]
-  );
+  const { data: boardData } = useBoard(boardId);
+  const columns =
+    boardData?.columns
+      .filter((column) => column.boardId === boardId)
+      .sort((a, b) => a.order - b.order) ?? [];
 
   const statusOptions = useMemo(
     () =>
       columns.map((column) => ({
-        value: column.name,
+        value: column.id,
         label: column.name,
       })),
-    [columns]
+    [columns],
   );
 
-  const firstColumnName = columns[0]?.name ?? "";
+  const firstColumnId = columns[0]?.id ?? "";
 
   const formDefaults = useMemo(() => {
     const defaultSubtasks =
@@ -76,16 +73,16 @@ export function TaskForm({
     return {
       title: defaultValues?.title ?? "",
       description: defaultValues?.description ?? "",
-      status: defaultValues?.status ?? firstColumnName,
+      columnId: defaultValues?.columnId ?? firstColumnId,
       subtasks: defaultSubtasks,
     };
-  }, [defaultValues, firstColumnName, mode]);
+  }, [defaultValues, firstColumnId, mode]);
 
   const {
     control,
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<TaskFormData>({
     resolver,
     defaultValues: formDefaults,
@@ -157,7 +154,7 @@ export function TaskForm({
       </div>
 
       <Controller
-        name="status"
+        name="columnId"
         control={control}
         render={({ field }) => (
           <Select
@@ -170,7 +167,7 @@ export function TaskForm({
         )}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full">
+      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting}>
         {mode === "create" ? "Create Task" : "Save Changes"}
       </Button>
     </form>

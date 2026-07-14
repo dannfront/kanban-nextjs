@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { useModalStore } from "@/store/useModalStore";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useCreateBoard } from "@/features/boards/hooks/use-create-board";
 import {
   BoardFormFields,
   type BoardFormData,
@@ -15,16 +15,20 @@ import { modalCardClassName } from "@/lib/modalCard";
 export function AddBoardModal() {
   const router = useRouter();
   const closeModal = useModalStore((state) => state.closeModal);
-  const addBoard = useBoardStore((state) => state.addBoard);
+  const createBoard = useCreateBoard();
 
-  const handleSubmit = (data: BoardFormData) => {
-    const boardId = addBoard({
-      name: data.name,
-      columns: data.columns,
-    });
+  const handleSubmit = async (data: BoardFormData) => {
+    try {
+      const result = await createBoard.mutateAsync({
+        name: data.name,
+        columns: data.columns,
+      });
 
-    router.push(`/kanban-dashboard/${boardId}`);
-    closeModal();
+      router.push(`/kanban-dashboard/${result.id}`);
+      closeModal();
+    } catch (error) {
+      console.error("Failed to create board", error);
+    }
   };
 
   return (

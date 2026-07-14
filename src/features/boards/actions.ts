@@ -1,7 +1,6 @@
 "use server";
 import "server-only";
 
-import { revalidatePath } from "next/cache";
 import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
@@ -12,8 +11,6 @@ import {
   UpdateBoardSchema,
   BoardIdSchema,
 } from "./schemas";
-
-const REVALIDATE_PATH = "/kanban-dashboard";
 
 type BoardWithColumns = Board & {
   columns: (Column & { _count: { tasks: number } })[];
@@ -68,7 +65,6 @@ export async function createBoard(
       return { success: false, error: "Failed to create board" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "layout");
     return { success: true, data: board };
   } catch (error) {
     console.error("createBoard failed:", error);
@@ -147,7 +143,6 @@ export async function updateBoard(
       return { success: false, error: "Board not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: board };
   } catch (error) {
     console.error("updateBoard failed:", error);
@@ -164,7 +159,6 @@ export async function deleteBoard(boardId: string): Promise<ActionResult<void>> 
   try {
     await requireBoardOwnership(boardId);
     await softDeleteBoard(boardId);
-    revalidatePath(REVALIDATE_PATH, "layout");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteBoard failed:", error);

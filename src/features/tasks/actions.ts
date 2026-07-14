@@ -1,7 +1,6 @@
 "use server";
 import "server-only";
 
-import { revalidatePath } from "next/cache";
 import { type Task, type Subtask } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
@@ -13,6 +12,7 @@ import {
   findBoardIdForTask,
   findBoardIdForSubtask,
 } from "@/lib/auth";
+import { BoardIdSchema } from "@/features/boards/schemas";
 import {
   CreateTaskSchema,
   UpdateTaskSchema,
@@ -23,7 +23,6 @@ import {
   SubtaskIdSchema,
 } from "./schemas";
 
-const REVALIDATE_PATH = "/kanban-dashboard";
 const ORDER_GAP = GAP;
 
 type TaskWithSubtasks = Task & { subtasks: Subtask[] };
@@ -80,7 +79,6 @@ export async function createTask(
       return { success: false, error: "Failed to create task" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("createTask failed:", error);
@@ -183,7 +181,6 @@ export async function updateTask(
       return { success: false, error: "Task not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("updateTask failed:", error);
@@ -207,7 +204,6 @@ export async function deleteTask(taskId: string): Promise<ActionResult<void>> {
     }
     await requireBoardOwnership(boardId);
     await softDeleteTask(taskId);
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteTask failed:", error);
@@ -314,7 +310,6 @@ export async function moveTask(
       });
     });
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: task };
   } catch (error) {
     console.error("moveTask failed:", error);
@@ -362,7 +357,6 @@ export async function reorderTasksInColumn(
       )
     );
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("reorderTasksInColumn failed:", error);
@@ -391,7 +385,6 @@ export async function createSubtask(
       data: { taskId, title },
     });
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: subtask };
   } catch (error) {
     console.error("createSubtask failed:", error);
@@ -434,7 +427,6 @@ export async function toggleSubtask(
       return { success: false, error: "Subtask not found" };
     }
 
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: result[0] };
   } catch (error) {
     console.error("toggleSubtask failed:", error);
@@ -457,10 +449,38 @@ export async function deleteSubtask(
     }
     await requireBoardOwnership(boardId);
     await softDeleteSubtask(subtaskId);
-    revalidatePath(REVALIDATE_PATH, "page");
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteSubtask failed:", error);
     return { success: false, error: "Failed to delete subtask" };
+  }
+}
+
+export async function getTasksWithSubtasks(
+  boardId: string
+): Promise<ActionResult<TaskWithSubtasks[]>> {
+  const validation = validateInput(BoardIdSchema, { boardId });
+  if (!validation.ok) {
+    return { success: false, error: validation.error };
+  }
+
+  try {
+    await requireBoardOwnership(boardId);
+
+    const tasks = await prisma.task.findMany({
+      where: {
+        column: { boardId, deletedAt: null },
+        deletedAt: null,
+      },
+      include: {
+        subtasks: { where: { deletedAt: null } },
+      },
+      orderBy: { order: "asc" },
+    });
+
+    return { success: true, data: tasks };
+  } catch (error) {
+    console.error("getTasksWithSubtasks failed:", error);
+    return { success: false, error: "Failed to fetch tasks" };
   }
 }

@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useBoardStore } from "@/features/boards/store/useBoardStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { boardKeys } from "@/features/boards/hooks/query-keys";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ColumnFields } from "./ColumnFields";
@@ -22,13 +23,20 @@ const baseBoardFormSchema = z.object({
 
 export type BoardFormData = z.infer<typeof baseBoardFormSchema>;
 
-const createBoardFormResolver = (excludeBoardId?: string) => {
+function createBoardFormResolver(
+  queryClient: ReturnType<typeof useQueryClient>,
+  excludeBoardId?: string,
+) {
   const schema = baseBoardFormSchema.superRefine((data, ctx) => {
-    const boards = useBoardStore.getState().boards;
+    const boards = queryClient.getQueryData<
+      { id: string; name: string }[]
+    >(boardKeys.all);
+    if (!boards) return;
+
     const isDuplicate = boards.some(
       (b) =>
         b.id !== excludeBoardId &&
-        b.name.trim().toLowerCase() === data.name.trim().toLowerCase()
+        b.name.trim().toLowerCase() === data.name.trim().toLowerCase(),
     );
     if (isDuplicate) {
       ctx.addIssue({
@@ -40,7 +48,7 @@ const createBoardFormResolver = (excludeBoardId?: string) => {
   });
 
   return zodResolver(schema) as Resolver<BoardFormData>;
-};
+}
 
 interface BoardFormFieldsProps {
   mode: "create" | "edit";
@@ -48,6 +56,7 @@ interface BoardFormFieldsProps {
   excludeBoardId?: string;
   onRemoveColumn?: (columnId: string, columnName: string) => void;
   onSubmit: (data: BoardFormData) => void;
+  allColumns?: { id: string }[];
 }
 
 export function BoardFormFields({
@@ -56,7 +65,9 @@ export function BoardFormFields({
   excludeBoardId,
   onRemoveColumn,
   onSubmit,
+  allColumns,
 }: BoardFormFieldsProps) {
+  const queryClient = useQueryClient();
   const nameLabel = mode === "create" ? "Name" : "Board Name";
   const columnsLabel = mode === "create" ? "Columns" : "Board Columns";
 
@@ -75,8 +86,8 @@ export function BoardFormFields({
   }, [defaultValues, mode]);
 
   const resolver = useMemo(
-    () => createBoardFormResolver(excludeBoardId),
-    [excludeBoardId]
+    () => createBoardFormResolver(queryClient, excludeBoardId),
+    [queryClient, excludeBoardId],
   );
 
   const {
@@ -84,7 +95,7 @@ export function BoardFormFields({
     register,
     handleSubmit,
     getValues,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<BoardFormData>({
     resolver,
     defaultValues: formDefaults,
@@ -107,9 +118,10 @@ export function BoardFormFields({
         getValues={getValues}
         onRemoveColumn={onRemoveColumn}
         label={columnsLabel}
+        allColumns={allColumns}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full">
+      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting}>
         {mode === "create" ? "Create New Board" : "Save Changes"}
       </Button>
     </form>
