@@ -3,9 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { reorderTasksInColumn } from "@/features/tasks/actions";
 import { boardKeys } from "@/features/boards/hooks/query-keys";
-import type { Task, Subtask } from "@prisma/client";
-
-type TaskWithSubtasks = Task & { subtasks: Subtask[] };
+import type { TaskWithSubtasks } from "@/features/tasks/types";
 
 interface ReorderVars {
   columnId: string;
@@ -58,6 +56,7 @@ export function useReorderTasks(boardId: string) {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.tasks(boardId) });
+      queryClient.invalidateQueries({ queryKey: boardKeys.all });
     },
   });
 }
