@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
-import { getBoardWithColumns } from "@/features/boards/actions";
-import { getTasksWithSubtasks } from "@/features/tasks/actions";
 import { EmptyBoard } from "@/features/boards/components/EmptyBoard";
 import { BoardView } from "@/features/boards/components/columns/BoardView";
 import { getQueryClient } from "@/lib/query-client";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { boardKeys } from "@/features/boards/hooks/query-keys";
+import {
+  boardDetailQueryOptions,
+  boardTasksQueryOptions,
+} from "@/features/boards/hooks/query-options";
 
 interface PageProps {
   params: Promise<{ boardId: string }>;
@@ -18,22 +20,8 @@ export default async function BoardPage({ params }: PageProps) {
   const queryClient = getQueryClient();
   try {
     await Promise.all([
-      queryClient.fetchQuery({
-        queryKey: boardKeys.detail(boardId),
-        queryFn: async () => {
-          const result = await getBoardWithColumns(boardId);
-          if (!result.success) throw new Error(result.error);
-          return result.data;
-        },
-      }),
-      queryClient.fetchQuery({
-        queryKey: boardKeys.tasks(boardId),
-        queryFn: async () => {
-          const result = await getTasksWithSubtasks(boardId);
-          if (!result.success) throw new Error(result.error);
-          return result.data;
-        },
-      }),
+      queryClient.fetchQuery(boardDetailQueryOptions(boardId)),
+      queryClient.fetchQuery(boardTasksQueryOptions(boardId)),
     ]);
   } catch {
     notFound();
