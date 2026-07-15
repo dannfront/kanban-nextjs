@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
-import { useParams } from "next/navigation";
 import { ColumnList } from "./ColumnList";
 import { useBoard } from "@/features/boards/hooks/use-board";
 import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
@@ -20,18 +19,15 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return a.every((val, idx) => val === b[idx]);
 }
 
-export function BoardView() {
-  const params = useParams<{ boardId: string }>();
-  const boardId = params.boardId;
-
+export function BoardView({ boardId }: { boardId: string }) {
   const { data: boardData } = useBoard(boardId);
   const columns = boardData?.columns ?? [];
 
   const { data: tasks } = useBoardTasks(boardId);
   const allTasks = tasks ?? [];
 
-  const moveTaskMutation = useMoveTask(boardId);
-  const reorderTasksMutation = useReorderTasks(boardId);
+  const { mutate: moveMutate } = useMoveTask(boardId);
+  const { mutate: reorderMutate } = useReorderTasks(boardId);
 
   const tasksByColumn = useMemo(() => {
     const grouped: Record<string, string[]> = {};
@@ -100,20 +96,20 @@ export function BoardView() {
 
       if (targetColumnId !== sourceColumnId) {
         // Cross-column move — useMoveTask handles optimistic update + invalidation
-        moveTaskMutation.mutate({ taskId, targetColumnId, newIndex });
+        moveMutate({ taskId, targetColumnId, newIndex });
       } else {
         // Same-column reorder — only fire if order actually changed
         const snapshotIds = tasksByColumnSnapshot.current[sourceColumnId];
         const newIds = reordered[sourceColumnId];
         if (snapshotIds && newIds && !arraysEqual(snapshotIds, newIds)) {
-          reorderTasksMutation.mutate({
+          reorderMutate({
             columnId: sourceColumnId,
             orderedTaskIds: newIds,
           });
         }
       }
     },
-    [moveTaskMutation, reorderTasksMutation]
+    [moveMutate, reorderMutate]
   );
 
   return (

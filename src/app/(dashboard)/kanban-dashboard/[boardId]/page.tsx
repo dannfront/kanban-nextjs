@@ -41,7 +41,7 @@ export default async function BoardPage({ params }: PageProps) {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <BoardView />
+      <BoardView boardId={boardId} />
     </HydrationBoundary>
   );
 }
