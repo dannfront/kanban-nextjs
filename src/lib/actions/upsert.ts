@@ -12,7 +12,7 @@ export async function upsertColumns(
   for (const column of columns) {
     if (column.id) {
       const updated = await tx.column.updateMany({
-        where: { id: column.id, boardId },
+        where: { id: column.id, boardId, deletedAt: null },
         data: {
           name: column.name,
           ...(column.color !== undefined && { color: column.color }),
@@ -43,7 +43,7 @@ export async function upsertSubtasks(
   for (const subtask of subtasks) {
     if (subtask.id) {
       const updated = await tx.subtask.updateMany({
-        where: { id: subtask.id, taskId },
+        where: { id: subtask.id, taskId, deletedAt: null },
         data: { title: subtask.title },
       });
       if (updated.count === 0) {

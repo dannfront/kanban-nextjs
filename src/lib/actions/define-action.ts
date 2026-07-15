@@ -5,16 +5,16 @@ type ValidateResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
-interface DefineActionConfig<TInput, TOut> {
-  validate: (...args: any[]) => ValidateResult<TInput>;
+interface DefineActionConfig<TArgs extends unknown[], TInput, TOut> {
+  validate: (...args: TArgs) => ValidateResult<TInput>;
   handler: (data: TInput) => Promise<ActionResult<TOut>>;
   errorLabel: string;
 }
 
-export function defineAction<TInput, TOut>(
-  config: DefineActionConfig<TInput, TOut>
-): (...args: any[]) => Promise<ActionResult<TOut>> {
-  return async (...args: any[]): Promise<ActionResult<TOut>> => {
+export function defineAction<TArgs extends unknown[], TInput, TOut>(
+  config: DefineActionConfig<TArgs, TInput, TOut>
+): (...args: TArgs) => Promise<ActionResult<TOut>> {
+  return async (...args: TArgs): Promise<ActionResult<TOut>> => {
     const validation = config.validate(...args);
     if (!validation.ok) {
       return { success: false, error: validation.error };

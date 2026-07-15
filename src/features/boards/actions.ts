@@ -74,36 +74,43 @@ export const updateBoard = defineAction({
   handler: async ({ boardId, name, columns }) => {
     await requireBoardOwnership(boardId);
 
-    const board = await prisma.$transaction(async (tx) => {
-      if (name !== undefined) {
-        await tx.board.update({
+    try {
+      const board = await prisma.$transaction(async (tx) => {
+        if (name !== undefined) {
+          await tx.board.update({
+            where: { id: boardId },
+            data: { name },
+          });
+        }
+
+        if (columns && columns.length > 0) {
+          const lastColumn = await tx.column.findFirst({
+            where: { boardId, deletedAt: null },
+            orderBy: { order: "desc" },
+          });
+          const startOrder = computeNextOrder(lastColumn?.order ?? null);
+          await upsertColumns(tx, boardId, columns, startOrder);
+        }
+
+        return tx.board.findUnique({
           where: { id: boardId },
-          data: { name },
-        });
-      }
-
-      if (columns && columns.length > 0) {
-        const lastColumn = await tx.column.findFirst({
-          where: { boardId, deletedAt: null },
-          orderBy: { order: "desc" },
-        });
-        const startOrder = computeNextOrder(lastColumn?.order ?? null);
-        await upsertColumns(tx, boardId, columns, startOrder);
-      }
-
-      return tx.board.findUnique({
-        where: { id: boardId },
-        include: {
-          columns: {
-            where: { deletedAt: null },
-            orderBy: { order: "asc" },
+          include: {
+            columns: {
+              where: { deletedAt: null },
+              orderBy: { order: "asc" },
+            },
           },
-        },
+        });
       });
-    });
 
-    if (!board) return { success: false, error: "Board not found" };
-    return { success: true, data: board };
+      if (!board) return { success: false, error: "Board not found" };
+      return { success: true, data: board };
+    } catch (error) {
+      if (error instanceof Error && error.message === "Column not found") {
+        return { success: false, error: "Column not found" };
+      }
+      throw error;
+    }
   },
   errorLabel: "Failed to update board",
 });
