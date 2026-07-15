@@ -3,9 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { moveTask } from "@/features/tasks/actions";
 import { boardKeys } from "@/features/boards/hooks/query-keys";
-import type { Task, Subtask } from "@prisma/client";
-
-type TaskWithSubtasks = Task & { subtasks: Subtask[] };
+import type { TaskWithSubtasks } from "@/features/tasks/types";
 
 interface MoveTaskVars {
   taskId: string;
@@ -127,7 +125,7 @@ export function useMoveTask(boardId: string) {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.tasks(boardId) });
-      queryClient.invalidateQueries({ queryKey: boardKeys.detail(boardId) });
+      queryClient.invalidateQueries({ queryKey: boardKeys.all });
     },
   });
 }
