@@ -1,3 +1,7 @@
+import type { Task as PrismaTask, Subtask as PrismaSubtask } from "@prisma/client";
+
+export type TaskWithSubtasks = PrismaTask & { subtasks: PrismaSubtask[] };
+
 export interface Subtask {
   id: string;
   title: string;
