@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useBoards } from "@/features/boards/hooks/use-boards";
 import { useModalStore } from "@/store/useModalStore";
+import { boardDetailQueryOptions, boardTasksQueryOptions } from "@/features/boards/hooks/query-options";
 import type { Board } from "@/features/boards/types";
 import iconBoard from "@/assets/icon-board.svg";
 
@@ -18,10 +20,17 @@ export function BoardNavLinks({ boards: fallbackBoards, onNavigate }: BoardNavLi
   const boardId = params.boardId;
   const { data: queryBoards } = useBoards();
   const openModal = useModalStore((state) => state.openModal);
+  const queryClient = useQueryClient();
 
   // Use query cache boards when available (populated by SSR HydrationBoundary),
   // fall back to prop for SSR/initial render edge cases
   const boards = queryBoards && queryBoards.length > 0 ? queryBoards : fallbackBoards ?? [];
+
+  const handlePrefetch = (targetBoardId: string) => {
+    if (targetBoardId === boardId) return; // Already viewing this board
+    queryClient.prefetchQuery(boardDetailQueryOptions(targetBoardId));
+    queryClient.prefetchQuery(boardTasksQueryOptions(targetBoardId));
+  };
 
   return (
     <nav>
@@ -32,6 +41,7 @@ export function BoardNavLinks({ boards: fallbackBoards, onNavigate }: BoardNavLi
             key={board.id}
             href={`/kanban-dashboard/${board.id}`}
             onClick={onNavigate}
+            onMouseEnter={() => handlePrefetch(board.id)}
             className={cn(
               "flex items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold transition-colors w-[85%]",
               isActive
