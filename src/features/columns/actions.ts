@@ -3,10 +3,11 @@ import "server-only";
 
 import { type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ActionResult, validateInput } from "@/lib/actions/result";
+import { validateInput } from "@/lib/actions/result";
 import { softDeleteColumn } from "@/lib/actions/soft-delete";
 import { requireBoardOwnership, findBoardIdForColumn } from "@/lib/auth";
-import { GAP } from "@/lib/actions/ordering";
+import { computeNextOrder, buildReorderUpdates } from "@/lib/actions/ordering";
+import { defineAction } from "@/lib/actions/define-action";
 import {
   CreateColumnSchema,
   UpdateColumnSchema,
@@ -14,19 +15,10 @@ import {
   ReorderColumnsSchema,
 } from "./schemas";
 
-const ORDER_GAP = GAP;
-
-export async function createColumn(
-  input: unknown
-): Promise<ActionResult<Column>> {
-  const validation = validateInput(CreateColumnSchema, input);
-  if (!validation.ok) {
-    return { success: false, error: validation.error };
-  }
-
-  try {
-    await requireBoardOwnership(validation.data.boardId);
-    const { boardId, name, color, order } = validation.data;
+export const createColumn = defineAction({
+  validate: (input: unknown) => validateInput(CreateColumnSchema, input),
+  handler: async ({ boardId, name, color, order }) => {
+    await requireBoardOwnership(boardId);
 
     let columnOrder = order;
     if (columnOrder === undefined) {
@@ -34,7 +26,7 @@ export async function createColumn(
         where: { boardId, deletedAt: null },
         orderBy: { order: "desc" },
       });
-      columnOrder = lastColumn ? lastColumn.order + ORDER_GAP : ORDER_GAP;
+      columnOrder = computeNextOrder(lastColumn?.order ?? null);
     }
 
     const column = await prisma.column.create({
@@ -42,34 +34,22 @@ export async function createColumn(
     });
 
     return { success: true, data: column };
-  } catch (error) {
-    console.error("createColumn failed:", error);
-    return { success: false, error: "Failed to create column" };
-  }
-}
+  },
+  errorLabel: "Failed to create column",
+});
 
-export async function updateColumn(
-  columnId: string,
-  input: unknown
-): Promise<ActionResult<Column>> {
-  const idValidation = validateInput(ColumnIdSchema, { columnId });
-  if (!idValidation.ok) {
-    return { success: false, error: idValidation.error };
-  }
-
-  const inputValidation = validateInput(UpdateColumnSchema, input);
-  if (!inputValidation.ok) {
-    return { success: false, error: inputValidation.error };
-  }
-
-  try {
+export const updateColumn = defineAction({
+  validate: (columnId: unknown, input: unknown) => {
+    const idResult = validateInput(ColumnIdSchema, { columnId });
+    if (!idResult.ok) return idResult;
+    const inputResult = validateInput(UpdateColumnSchema, input);
+    if (!inputResult.ok) return inputResult;
+    return { ok: true, data: { columnId: idResult.data.columnId, ...inputResult.data } };
+  },
+  handler: async ({ columnId, order: _ignored, ...safeData }) => {
     const boardId = await findBoardIdForColumn(columnId);
-    if (!boardId) {
-      return { success: false, error: "Column not found" };
-    }
+    if (!boardId) return { success: false, error: "Column not found" };
     await requireBoardOwnership(boardId);
-
-    const { order: _ignored, ...safeData } = inputValidation.data;
 
     const column = await prisma.column.update({
       where: { id: columnId },
@@ -77,47 +57,26 @@ export async function updateColumn(
     });
 
     return { success: true, data: column };
-  } catch (error) {
-    console.error("updateColumn failed:", error);
-    return { success: false, error: "Failed to update column" };
-  }
-}
+  },
+  errorLabel: "Failed to update column",
+});
 
-export async function deleteColumn(
-  columnId: string
-): Promise<ActionResult<void>> {
-  const validation = validateInput(ColumnIdSchema, { columnId });
-  if (!validation.ok) {
-    return { success: false, error: validation.error };
-  }
-
-  try {
+export const deleteColumn = defineAction({
+  validate: (columnId: unknown) => validateInput(ColumnIdSchema, { columnId }),
+  handler: async ({ columnId }) => {
     const boardId = await findBoardIdForColumn(columnId);
-    if (!boardId) {
-      return { success: false, error: "Column not found" };
-    }
+    if (!boardId) return { success: false, error: "Column not found" };
     await requireBoardOwnership(boardId);
     await softDeleteColumn(columnId);
     return { success: true, data: undefined };
-  } catch (error) {
-    console.error("deleteColumn failed:", error);
-    return { success: false, error: "Failed to delete column" };
-  }
-}
+  },
+  errorLabel: "Failed to delete column",
+});
 
-export async function reorderColumns(
-  boardId: string,
-  orderedColumnIds: string[]
-): Promise<ActionResult<void>> {
-  const validation = validateInput(ReorderColumnsSchema, {
-    boardId,
-    orderedColumnIds,
-  });
-  if (!validation.ok) {
-    return { success: false, error: validation.error };
-  }
-
-  try {
+export const reorderColumns = defineAction({
+  validate: (boardId: unknown, orderedColumnIds: unknown) =>
+    validateInput(ReorderColumnsSchema, { boardId, orderedColumnIds }),
+  handler: async ({ boardId, orderedColumnIds }) => {
     await requireBoardOwnership(boardId);
 
     const matching = await prisma.column.count({
@@ -127,18 +86,14 @@ export async function reorderColumns(
       return { success: false, error: "Some columns do not belong to this board" };
     }
 
+    const updates = buildReorderUpdates(orderedColumnIds);
     await prisma.$transaction(
-      orderedColumnIds.map((columnId, index) =>
-        prisma.column.update({
-          where: { id: columnId },
-          data: { order: (index + 1) * ORDER_GAP },
-        })
+      updates.map(({ id, order }) =>
+        prisma.column.update({ where: { id }, data: { order } })
       )
     );
 
     return { success: true, data: undefined };
-  } catch (error) {
-    console.error("reorderColumns failed:", error);
-    return { success: false, error: "Failed to reorder columns" };
-  }
-}
+  },
+  errorLabel: "Failed to reorder columns",
+});

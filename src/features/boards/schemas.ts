@@ -17,7 +17,7 @@ export const UpdateBoardSchema = z.object({
       z.object({
         id: z.string().optional(),
         name: z.string().min(1),
-        color: z.string(),
+        color: z.string().optional(),
       })
     )
     .optional(),

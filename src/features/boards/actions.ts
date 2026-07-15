@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
 import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/auth";
+import { defineAction } from "@/lib/actions/define-action";
+import { GAP, computeNextOrder } from "@/lib/actions/ordering";
+import { upsertColumns } from "@/lib/actions/upsert";
 import {
   CreateBoardSchema,
   UpdateBoardSchema,
@@ -16,17 +19,10 @@ type BoardWithColumns = Board & {
   columns: (Column & { _count: { tasks: number } })[];
 };
 
-export async function createBoard(
-  input: unknown
-): Promise<ActionResult<Board & { columns: Column[] }>> {
-  const validation = validateInput(CreateBoardSchema, input);
-  if (!validation.ok) {
-    return { success: false, error: validation.error };
-  }
-
-  try {
+export const createBoard = defineAction({
+  validate: (input: unknown) => validateInput(CreateBoardSchema, input),
+  handler: async ({ name, columns }) => {
     const seedUserId = await getSeedUserId();
-    const { name, columns } = validation.data;
 
     const board = await prisma.$transaction(async (tx) => {
       const newBoard = await tx.board.create({
@@ -38,7 +34,7 @@ export async function createBoard(
           boardId: newBoard.id,
           name: column.name,
           color: column.color,
-          order: (index + 1) * 1000,
+          order: (index + 1) * GAP,
         })),
       });
 
@@ -61,34 +57,22 @@ export async function createBoard(
       });
     });
 
-    if (!board) {
-      return { success: false, error: "Failed to create board" };
-    }
-
+    if (!board) return { success: false, error: "Failed to create board" };
     return { success: true, data: board };
-  } catch (error) {
-    console.error("createBoard failed:", error);
-    return { success: false, error: "Failed to create board" };
-  }
-}
+  },
+  errorLabel: "Failed to create board",
+});
 
-export async function updateBoard(
-  boardId: string,
-  input: unknown
-): Promise<ActionResult<Board & { columns: Column[] }>> {
-  const idValidation = validateInput(BoardIdSchema, { boardId });
-  if (!idValidation.ok) {
-    return { success: false, error: idValidation.error };
-  }
-
-  const inputValidation = validateInput(UpdateBoardSchema, input);
-  if (!inputValidation.ok) {
-    return { success: false, error: inputValidation.error };
-  }
-
-  try {
+export const updateBoard = defineAction({
+  validate: (boardId: unknown, input: unknown) => {
+    const idResult = validateInput(BoardIdSchema, { boardId });
+    if (!idResult.ok) return idResult;
+    const inputResult = validateInput(UpdateBoardSchema, input);
+    if (!inputResult.ok) return inputResult;
+    return { ok: true, data: { boardId: idResult.data.boardId, ...inputResult.data } };
+  },
+  handler: async ({ boardId, name, columns }) => {
     await requireBoardOwnership(boardId);
-    const { name, columns } = inputValidation.data;
 
     const board = await prisma.$transaction(async (tx) => {
       if (name !== undefined) {
@@ -103,29 +87,8 @@ export async function updateBoard(
           where: { boardId, deletedAt: null },
           orderBy: { order: "desc" },
         });
-        let nextOrder = lastColumn ? lastColumn.order + 1000 : 1000;
-
-        for (const column of columns) {
-          if (column.id) {
-            const updated = await tx.column.updateMany({
-              where: { id: column.id, boardId },
-              data: { name: column.name, color: column.color },
-            });
-            if (updated.count === 0) {
-              throw new Error("Column not found");
-            }
-          } else {
-            await tx.column.create({
-              data: {
-                boardId,
-                name: column.name,
-                color: column.color,
-                order: nextOrder,
-              },
-            });
-            nextOrder += 1000;
-          }
-        }
+        const startOrder = computeNextOrder(lastColumn?.order ?? null);
+        await upsertColumns(tx, boardId, columns, startOrder);
       }
 
       return tx.board.findUnique({
@@ -139,32 +102,21 @@ export async function updateBoard(
       });
     });
 
-    if (!board) {
-      return { success: false, error: "Board not found" };
-    }
-
+    if (!board) return { success: false, error: "Board not found" };
     return { success: true, data: board };
-  } catch (error) {
-    console.error("updateBoard failed:", error);
-    return { success: false, error: "Failed to update board" };
-  }
-}
+  },
+  errorLabel: "Failed to update board",
+});
 
-export async function deleteBoard(boardId: string): Promise<ActionResult<void>> {
-  const validation = validateInput(BoardIdSchema, { boardId });
-  if (!validation.ok) {
-    return { success: false, error: validation.error };
-  }
-
-  try {
+export const deleteBoard = defineAction({
+  validate: (boardId: unknown) => validateInput(BoardIdSchema, { boardId }),
+  handler: async ({ boardId }) => {
     await requireBoardOwnership(boardId);
     await softDeleteBoard(boardId);
     return { success: true, data: undefined };
-  } catch (error) {
-    console.error("deleteBoard failed:", error);
-    return { success: false, error: "Failed to delete board" };
-  }
-}
+  },
+  errorLabel: "Failed to delete board",
+});
 
 export async function getBoards(): Promise<ActionResult<Board[]>> {
   try {
