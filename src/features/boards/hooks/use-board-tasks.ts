@@ -1,17 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getTasksWithSubtasks } from "@/features/tasks/actions";
-import { boardKeys } from "@/features/boards/hooks/query-keys";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { boardTasksQueryOptions } from "@/features/boards/hooks/query-options";
 
 export function useBoardTasks(boardId: string) {
   return useQuery({
-    queryKey: boardKeys.tasks(boardId),
-    queryFn: async () => {
-      const result = await getTasksWithSubtasks(boardId);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
+    ...boardTasksQueryOptions(boardId),
+    placeholderData: keepPreviousData,
     enabled: Boolean(boardId),
   });
 }
