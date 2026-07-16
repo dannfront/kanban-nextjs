@@ -2,6 +2,7 @@
 import "server-only";
 
 import { type Task, type Subtask } from "@prisma/client";
+import type { TaskWithSubtasks } from "./types";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { defineAction } from "@/lib/actions/define-action";
@@ -29,8 +30,6 @@ import {
   CreateSubtaskSchema,
   SubtaskIdSchema,
 } from "./schemas";
-
-type TaskWithSubtasks = Task & { subtasks: Subtask[] };
 
 // ---------------------------------------------------------------------------
 // Simple actions
