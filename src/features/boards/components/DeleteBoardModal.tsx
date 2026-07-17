@@ -10,6 +10,7 @@ import { useBoards } from "@/features/boards/hooks/use-boards";
 import { useDeleteBoard } from "@/features/boards/hooks/use-delete-board";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useNotify, messages } from "@/lib/notifications";
 
 interface DeleteBoardModalProps {
   boardId: string;
@@ -20,6 +21,7 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
   const params = useParams<{ boardId?: string }>();
   const closeModal = useModalStore((state) => state.closeModal);
   const deleteBoard = useDeleteBoard();
+  const notify = useNotify();
   const { data: boards } = useBoards();
   const allBoards = boards ?? [];
 
@@ -45,6 +47,8 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
     try {
       await deleteBoard.mutateAsync(boardId);
 
+      notify.success(messages.board.delete.success);
+
       if (params.boardId === boardId) {
         const remainingBoards = allBoards.filter((b) => b.id !== boardId);
         const nextBoard = remainingBoards[0];
@@ -53,6 +57,7 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
 
       closeModal();
     } catch (error) {
+      notify.error(messages.board.delete.error);
       console.error("Failed to delete board", error);
     }
   };

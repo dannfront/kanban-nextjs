@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/components/QueryProvider";
 import { StoreHydration } from "@/store/StoreHydration";
+import { Toaster } from "@/components/ui/Toaster";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className="h-full min-h-full flex flex-col font-sans">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>{children}</QueryProvider>
+          <Toaster />
         </ThemeProvider>
         <StoreHydration />
       </body>

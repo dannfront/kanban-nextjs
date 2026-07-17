@@ -11,6 +11,7 @@ import {
 } from "@/features/boards/components/BoardFormFields";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useNotify, messages } from "@/lib/notifications";
 
 // TODO: Remove this hardcoded default color once the column color picker UI is implemented
 const DEFAULT_COLUMN_COLOR = "#635FC7";
@@ -19,6 +20,7 @@ export function AddBoardModal() {
   const router = useRouter();
   const closeModal = useModalStore((state) => state.closeModal);
   const createBoard = useCreateBoard();
+  const notify = useNotify();
 
   const handleSubmit = async (data: BoardFormData) => {
     try {
@@ -32,9 +34,11 @@ export function AddBoardModal() {
         columns: columnsWithColor,
       });
 
+      notify.success(messages.board.create.success);
       router.push(`/kanban-dashboard/${result.id}`);
       closeModal();
     } catch (error) {
+      notify.error(messages.board.create.error);
       console.error("Failed to create board", error);
     }
   };

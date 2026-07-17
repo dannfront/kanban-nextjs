@@ -10,6 +10,7 @@ import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
 import { useDeleteTask } from "@/features/tasks/hooks/use-delete-task";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useNotify, messages } from "@/lib/notifications";
 
 interface DeleteTaskModalProps {
   taskId: string;
@@ -20,6 +21,7 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
   const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
   const deleteTask = useDeleteTask(boardId);
+  const notify = useNotify();
   const { data: tasks } = useBoardTasks(boardId);
   const allTasks = tasks ?? [];
 
@@ -44,8 +46,10 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
   const handleDelete = async () => {
     try {
       await deleteTask.mutateAsync(taskId);
+      notify.success(messages.task.delete.success);
       closeModal();
     } catch (error) {
+      notify.error(messages.task.delete.error);
       console.error("Failed to delete task", error);
     }
   };
