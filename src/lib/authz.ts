@@ -1,23 +1,19 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-
-const SEED_EMAIL = "seed@kanban.local";
-
-export async function getSeedUserId(): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { email: SEED_EMAIL },
-    select: { id: true },
-  });
-
-  if (!user) {
-    throw new Error(`Seed user not found: ${SEED_EMAIL}`);
-  }
-
-  return user.id;
-}
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function getCurrentUserId(): Promise<string> {
-  return getSeedUserId();
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/auth/login");
+  }
+
+  return session.user.id;
 }
 
 export async function requireBoardOwnership(boardId: string): Promise<void> {

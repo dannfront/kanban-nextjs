@@ -57,6 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           },
         },
       );
+      return;
     }
 
     const { data, error } = await signIn.email(

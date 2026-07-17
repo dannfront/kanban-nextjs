@@ -5,7 +5,7 @@ import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
-import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/authz";
+import { requireBoardOwnership, getCurrentUserId } from "@/lib/authz";
 import { defineAction } from "@/lib/actions/define-action";
 import { GAP, computeNextOrder } from "@/lib/actions/ordering";
 import { upsertColumns } from "@/lib/actions/upsert";
@@ -22,11 +22,11 @@ type BoardWithColumns = Board & {
 export const createBoard = defineAction({
   validate: (input: unknown) => validateInput(CreateBoardSchema, input),
   handler: async ({ name, columns }) => {
-    const seedUserId = await getSeedUserId();
+    const userId = await getCurrentUserId();
 
     const board = await prisma.$transaction(async (tx) => {
       const newBoard = await tx.board.create({
-        data: { name, ownerId: seedUserId },
+        data: { name, ownerId: userId },
       });
 
       await tx.column.createMany({
@@ -41,7 +41,7 @@ export const createBoard = defineAction({
       await tx.boardMember.create({
         data: {
           boardId: newBoard.id,
-          userId: seedUserId,
+          userId: userId,
           role: BoardRole.OWNER,
         },
       });
