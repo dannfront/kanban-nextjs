@@ -5,15 +5,11 @@ import { boardsQueryOptions } from "@/features/boards/hooks/query-options";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: Promise<{ boardId: string }>;
 }
 
-export default async function BoardLayout({
+export default async function KanbanDashboardLayout({
   children,
-  params,
 }: LayoutProps) {
-  await params;
-
   // SSR prefetch boards into TanStack Query cache
   const queryClient = getQueryClient();
   try {
@@ -24,9 +20,7 @@ export default async function BoardLayout({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <DashboardShell>
-        {children}
-      </DashboardShell>
+      <DashboardShell>{children}</DashboardShell>
     </HydrationBoundary>
   );
 }

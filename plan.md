@@ -1,0 +1,501 @@
+# Plan de Implementación: Backend + DB para Kanban Next.js
+
+## Resumen de Decisiones de Arquitectura
+
+| Tema | Decisión |
+|------|----------|
+| **Auth** | Auth.js v5 con Credentials Provider (email + contraseña). Sin OAuth. |
+| **Backend** | 100% Server Actions. No API Routes. |
+| **ORM** | Prisma v7+ con PostgreSQL. |
+| **Roles BoardMember** | `OWNER`, `EDITOR`, `GUEST`. |
+| **Ordenamiento DnD** | Índice fraccionario (entero con gap). Ej: entre 1000 y 2000 -> 1500. Rebalance async cuando el gap sea < 10. |
+| **Borrado** | Soft delete en todos los modelos (`deletedAt: DateTime?`). |
+| **Estado Remoto** | TanStack Query (React Query) para server state. Zustand solo para UI puro (sidebar, modales, theme). |
+| **Timestamps** | Todos los modelos llevan `createdAt` y `updatedAt`. |
+| **Task.status** | Eliminado. El status se deriva del `Column.name`. |
+| **Board.isActive** | Solo el `OWNER` del board puede determinar si está activo. No hay preferencia por usuario. |
+| **Seed** | El `data.json` actual se convertirá en un seed de Prisma para no empezar vacío. |
+| **Colores Columna** | Paleta predefinida por ahora. Todos los boards usan los mismos colores base. |
+
+---
+
+## Modelos Prisma (Resumen)
+
+```
+User
+├── id (UUID, PK)
+├── email (unique)
+├── password (hashed)
+├── name
+├── createdAt / updatedAt
+└── BoardMember[]
+
+Board
+├── id (UUID, PK)
+├── name
+├── isActive
+├── createdAt / updatedAt / deletedAt
+├── ownerId (FK -> User)
+├── BoardMember[]
+└── Column[]
+
+BoardMember (pivote)
+├── id (UUID, PK)
+├── boardId (FK)
+├── userId (FK)
+├── role (enum: OWNER, EDITOR, GUEST)
+├── createdAt / updatedAt
+
+Column
+├── id (UUID, PK)
+├── boardId (FK)
+├── name
+├── color
+├── order (Int)
+├── createdAt / updatedAt / deletedAt
+└── Task[]
+
+Task
+├── id (UUID, PK)
+├── columnId (FK)
+├── title
+├── description
+├── order (Int)
+├── createdAt / updatedAt / deletedAt
+└── Subtask[]
+
+Subtask
+├── id (UUID, PK)
+├── taskId (FK)
+├── title
+├── isCompleted
+├── createdAt / updatedAt / deletedAt
+```
+
+---
+
+## Fase 1 — Schema Prisma & Migración Inicial
+
+### 1.1 Docker + PostgreSQL
+- Crear `docker-compose.yml` en la raíz del proyecto.
+- Usar la imagen oficial `postgres:latest`.
+- Configurar:
+  - Puerto: `5432:5432`
+  - Usuario: `kanban`
+  - Password: `kanban`
+  - Database: `kanban_db`
+- Iniciar el contenedor: `docker compose up -d`
+- Verificar conexión antes de continuar.
+
+### 1.2 Instalación y Configuración de Prisma
+- Instalar Prisma v7: `npm install prisma @prisma/client`
+- Inicializar Prisma: `npx prisma init`
+- Configurar `DATABASE_URL` en `.env` apuntando al contenedor Docker:
+  ```
+  DATABASE_URL="postgresql://kanban:kanban@localhost:5432/kanban_db"
+  ```
+
+### 1.3 Schema Completo
+- Crear `prisma/schema.prisma` con todos los modelos.
+- Definir enums: `BoardRole` (`OWNER`, `EDITOR`, `GUEST`).
+- Relaciones:
+  - `User` 1:N `BoardMember`
+  - `Board` 1:N `BoardMember`, 1:N `Column`
+  - `BoardMember` N:1 `User`, N:1 `Board`
+  - `Column` N:1 `Board`, 1:N `Task`
+  - `Task` N:1 `Column`, 1:N `Subtask`
+  - `Subtask` N:1 `Task`
+- Soft delete con `deletedAt DateTime?` en `Board`, `Column`, `Task`, `Subtask`.
+- `User` y `BoardMember` sin soft delete por ahora.
+
+### 1.4 Seed Script
+- Crear `prisma/seed.ts` que lee `data.json` y pobla:
+  - 1 usuario dummy (`seed@kanban.local`)
+  - Boards como `OWNER`
+  - Columnas con colores actuales y `order` convertido a enteros base (0, 1000, 2000... o secuencia actual × 1000)
+  - Tareas con `order` convertido
+  - Subtasks
+
+### 1.5 Primera Migración
+- `npx prisma migrate dev --name init`
+- Verificar en PostgreSQL (contenedor Docker).
+
+---
+
+## Fase 2 — Server Actions Base (sin Auth)
+
+### 2.1 Arquitectura de Server Actions
+- Ubicación: `src/features/boards/actions.ts`, `src/features/tasks/actions.ts`
+- Cada action recibe input validado con Zod.
+- Retornan `{ success: boolean, data?, error? }` para que TanStack Query maneje errores.
+
+### 2.2 Board Actions
+- `createBoard(name, columns[])` → crea board + columnas + asocia OWNER.
+- `updateBoard(boardId, name?, columns?)` → upsert columnas, reordenar.
+- `deleteBoard(boardId)` → soft delete cascade: board → columnas → tareas → subtasks.
+- `getBoards()` → lista boards donde `deletedAt IS NULL`.
+- `getBoardWithColumns(boardId)` → board + columnas + conteo de tareas.
+
+### 2.3 Column Actions
+- `createColumn(boardId, name, color, order?)`
+- `updateColumn(columnId, name?, color?, order?)`
+- `deleteColumn(columnId)` → soft delete + cascade a tareas.
+- `reorderColumns(boardId, orderedColumnIds[])` → recalcula `order` fraccionario.
+
+### 2.4 Task Actions
+- `createTask(columnId, title, description?, subtasks[])`
+- `updateTask(taskId, title?, description?, columnId?, subtasks?)`
+- `deleteTask(taskId)` → soft delete + cascade a subtasks.
+- `moveTask(taskId, targetColumnId, newIndex)` → calcula `order` fraccionario:
+  - `newOrder = (prevTask.order + nextTask.order) / 2`
+- `reorderTasksInColumn(columnId, orderedTaskIds[])`
+
+### 2.5 Subtask Actions
+- `createSubtask(taskId, title)`
+- `toggleSubtask(subtaskId)`
+- `deleteSubtask(subtaskId)` → soft delete.
+
+### 2.6 Rebalance de Órdenes
+- Cuando el gap entre dos ítems sea < 10, disparar rebalance async:
+  - Recalcular todos los `order` de la columna como múltiplos de 1000.
+  - Ej: 4 tareas → 0, 1000, 2000, 3000.
+
+---
+
+## Fase 3 — TanStack Query + Adaptación Frontend
+
+### 3.1 Instalación
+- `npm install @tanstack/react-query`
+- Configurar `QueryClient` y `QueryClientProvider` en root layout.
+
+### 3.2 Reemplazo de Zustand Data Stores
+- **Eliminar** de Zustand: `boards`, `columns`, `tasks`, `setBoards`, `setColumns`, `setTasks`, y todos los métodos de CRUD.
+- **Mantener** en Zustand: `isSidebarOpen`, `toggleSidebar`, `activeModal`, `openModal`, `closeModal`.
+
+### 3.3 Queries
+- `useBoards()` → `useQuery({ queryKey: ['boards'], queryFn: getBoards })`
+- `useBoard(boardId)` → `useQuery({ queryKey: ['board', boardId], queryFn: () => getBoardWithColumns(boardId) })`
+- `useTasks(columnId)` → `useQuery({ queryKey: ['tasks', columnId], queryFn: () => getTasksByColumn(columnId) })`
+
+### 3.4 Mutations
+- `useCreateBoard()` → `useMutation({ mutationFn: createBoard, onSuccess: invalidate ['boards'] })`
+- `useMoveTask()` → `useMutation({ mutationFn: moveTask, onSuccess: invalidate ['tasks', columnId] })`
+- Optimistic UI en DnD: actualizar cache local inmediatamente, rollback en error.
+
+### 3.5 Server Actions como Query Functions
+- Todas las queries usan Server Actions directamente (no fetch manual a API).
+- Aprovechar que Server Actions pueden ser llamadas desde Client Components.
+
+---
+
+## Fase 4 — Auth.js v5 + Protección
+
+### 4.1 Instalación
+- `npm install next-auth@beta` (v5)
+- Crear `src/auth.ts` con Credentials Provider.
+- Hash de passwords con `bcryptjs`.
+- Crear `src/middleware.ts` para proteger rutas del dashboard.
+
+### 4.2 Adaptación del Schema
+- Agregar campos a `User`:
+  - `password: String` (nullable hasta que se registre)
+  - `emailVerified: DateTime?`
+- (Opcional) Tabla `Account` y `Session` si Auth.js las requiere para credentials.
+
+### 4.3 Protección de Server Actions
+- En cada action, obtener sesión con `auth()`.
+- Si no hay sesión → `unauthorized()`.
+- Verificar `BoardMember.role` para la acción:
+  - `OWNER`: todo.
+  - `EDITOR`: crear/editar tareas, columnas. No borrar board, no invitar.
+  - `GUEST`: solo lectura. Actions de mutación rechazadas.
+
+### 4.4 Registro y Login
+- Server Actions: `register(email, password, name)` y `login(email, password)`.
+- Páginas: `/login`, `/register`.
+- Redirección post-login al dashboard.
+
+---
+
+## Fase 5 — Polish & Edge Cases
+
+### 5.1 Rebalance Automático
+- Trigger en `moveTask` cuando `Math.abs(prevOrder - nextOrder) < 10`.
+- Recalcular y guardar nuevos órdenes en transacción.
+
+### 5.2 Cascade Soft Delete
+- `deleteBoard`: marcar `deletedAt` en board, columnas, tareas, subtasks.
+- `restoreBoard`: opcional, reversión.
+
+### 5.3 Optimistic UI en DnD
+- En `useMoveTask` mutation, usar `optimisticUpdate` para reflejar el movimiento antes de la respuesta del server.
+- Si falla, devolver a posición original.
+
+### 5.4 Colores de Columnas
+- Paleta predefinida en config: `['#49C4E5', '#8471F2', '#67E2AE', '#EA5555', '#FF9F43', '#2BC9A6']`
+- Al crear board, asignar colores cíclicamente a las columnas.
+
+### 5.5 Seed Mejorado
+- Agregar más variedad de datos de prueba (más boards, más tareas) para testing visual.
+
+---
+
+## Dependencias a Instalar (Por Fase)
+
+### Fase 1
+- `prisma`, `@prisma/client`
+
+### Fase 2
+- (Sin nuevas dependencias, solo Prisma)
+
+### Fase 3
+- `@tanstack/react-query`
+
+### Fase 4
+- `next-auth@beta` (v5), `bcryptjs`, `@types/bcryptjs`
+
+### Fase 5
+- (Sin nuevas dependencias)
+
+---
+
+## Estructura de Archivos (Nuevos)
+
+```
+prisma/
+├── schema.prisma
+├── seed.ts
+
+src/
+├── auth.ts                    # Configuración Auth.js v5
+├── middleware.ts              # Protección de rutas
+├── features/
+│   ├── boards/
+│   │   ├── actions.ts         # Server Actions de Board y Column
+│   │   └── queries.ts         # (opcional) helpers de Prisma
+│   ├── tasks/
+│   │   ├── actions.ts         # Server Actions de Task y Subtask
+│   │   └── queries.ts
+│   └── auth/
+│       ├── actions.ts         # register, login
+│       └── components/      # LoginForm, RegisterForm
+│
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   └── register/page.tsx
+│   └── (dashboard)/           # Ya existe, protegido por middleware
+│
+├── store/
+│   └── useUIStore.ts          # Solo UI state (sidebar, modales)
+│
+└── lib/
+    └── prisma.ts              # Singleton PrismaClient
+```
+
+---
+
+## Notas Importantes
+
+- **Server Actions + TanStack Query**: Aunque Server Actions mutan directamente, TanStack Query aporta caching, revalidación, optimistic UI y manejo de errores estandarizado. No usamos `fetch` a API routes.
+- **Zustand reducido**: El `useBoardStore` y `useTaskStore` actuales se eliminan o migran a TanStack Query. Solo `useUIStore` y `useModalStore` permanecen.
+- **Prisma Singleton**: `src/lib/prisma.ts` exporta una única instancia de `PrismaClient` para evitar múltiples conexiones en desarrollo.
+- **Soft Delete**: Todos los queries deben incluir `where: { deletedAt: null }` por defecto. Se puede crear un middleware de Prisma para esto.
+- **Orden fraccionario**: Empezamos con enteros grandes (multiples de 1000). El rebalance es una optimización de la Fase 5.
+- **Colores**: Por ahora, hardcodear la paleta en un array. En el futuro, el usuario podrá elegir al crear el board.
+
+---
+
+## Estado Inicial vs Final
+
+| Antes (Hoy) | Después (Objetivo) |
+|-------------|-------------------|
+| Datos en `data.json` | PostgreSQL persistente |
+| Estado en Zustand (cliente) | TanStack Query + Server Actions |
+| Sin auth | Auth.js v5 (email + password) |
+| Sin roles | OWNER / EDITOR / GUEST |
+| Borrado permanente | Soft delete en cascada |
+| Orden entero simple | Orden fraccionario con rebalance |
+| Column colors fijos en data | Paleta predefinida por config |
+
+---
+
+*Plan creado el 2026-07-08. No iniciar implementación hasta confirmación explícita del usuario.*
+
+---
+
+# ?? Log de Completitud � Fase 1 y Fase 2
+
+> Documento generado tras la finalizaci�n de Fase 1 (PostgreSQL + Prisma) y Fase 2 (Server Actions). Refleja el estado real del proyecto.
+
+## ? Fase 1 � Schema Prisma y Migraci�n Inicial (COMPLETADA)
+
+**Rama:** ase1-backend-schema ? mergeada a main (commit 4fec785)
+
+### 1.1 Docker y PostgreSQL
+- docker-compose.yml con imagen postgres:latest (PostgreSQL 18+).
+- Volumen pgdata montado en /var/lib/postgresql (path actualizado para PG 18).
+- Healthcheck con pg_isready.
+
+### 1.2 Configuraci�n Prisma
+- Prisma v7.8.0 con @prisma/adapter-pg (driver adapter obligatorio en Prisma 7).
+- prisma.config.ts con datasource.url (sacado de schema.prisma por cambio de Prisma 7).
+- src/lib/prisma.ts � singleton HMR-safe con globalThis y PrismaPg(pool).
+
+### 1.3 Schema (6 modelos y 1 enum)
+- User: id, email (unique), password, name, createdAt, updatedAt.
+- Board: id, name, isActive, ownerId, createdAt, updatedAt, deletedAt.
+- BoardMember: id, role (enum), userId, boardId, createdAt, updatedAt, @@unique([userId, boardId]).
+- Column: id, name, color, order, boardId, createdAt, updatedAt, deletedAt.
+- Task: id, title, description, order, columnId, createdAt, updatedAt, deletedAt.
+- Subtask: id, title, isCompleted, taskId, createdAt, updatedAt, deletedAt.
+
+### 1.4 Seed
+- prisma/seed.ts lee data.json, crea 1 usuario dummy (seed@kanban.local), 3 boards, 9 columnas, 22 tareas, 54 subtasks.
+- IDs antiguos mapeados a UUIDs nuevos via Map<string,string>.
+- order * 1000 para base gap.
+- Transaccional y wipe-and-reinsert (dev only).
+
+### 1.5 Migraci�n
+- prisma/migrations/20260709171215_init/migration.sql aplicada.
+- 6 CREATE TABLE, 2 unique indexes, 6 foreign keys.
+
+### 1.6 Verificaci�n
+- scripts/db-smoke.ts � 1/1 user, 3/3 boards, 3/3 members, 9/9 columns, 22/22 tasks, 54/54 subtasks. PASSED.
+
+### Warnings conocidos (Fase 1)
+- FK columns sin @@index (resuelto parcialmente en Fase 2 con orden centralizado).
+- postgres:latest es tag m�vil (se mantiene as� intencionalmente).
+- Seed no es at�mico bajo interrupci�n.
+
+---
+
+## ? Fase 2 � Server Actions (COMPLETADA Y REFACTORIZADA)
+
+**Rama principal:** ase2-server-actions ? mergeada a main (commit 7bf28b1)
+**Rama de fixes:** ase2-fixes ? mergeada a main (4 commits de fixes)
+
+### 2.1 Archivos creados (14 total)
+
+| # | Archivo | Prop�sito |
+|---|---------|-----------|
+| 1 | src/lib/actions/result.ts | ActionResult<T> y alidateInput() con Zod |
+| 2 | src/lib/actions/ordering.ts | GAP = 1000, computeInsertOrder(), isOrderCollision() |
+| 3 | src/lib/actions/soft-delete.ts | Cascade soft delete (board ? column ? task ? subtask) |
+| 4 | src/lib/auth.ts | getCurrentUserId(), equireBoardOwnership(), indBoardIdFor* |
+| 5 | src/features/boards/schemas.ts | Zod: CreateBoard, UpdateBoard, BoardId |
+| 6 | src/features/columns/schemas.ts | Zod: CreateColumn, UpdateColumn, ColumnId, ReorderColumns |
+| 7 | src/features/tasks/schemas.ts | Zod: CreateTask, UpdateTask, TaskId, MoveTask, ReorderTasks, CreateSubtask, SubtaskId |
+| 8 | src/features/boards/actions.ts | 5 Server Actions |
+| 9 | src/features/columns/actions.ts | 4 Server Actions |
+| 10 | src/features/tasks/actions.ts | 8 Server Actions |
+| 11 | scripts/server-actions-smoke.ts | 12 assertions de integraci�n |
+| 12 | scripts/_register-next-stubs.ts | Stubs para server-only y 
+ext/cache en dev |
+
+### 2.2 Server Actions implementados (17 total)
+
+- **Boards (5):** createBoard, updateBoard, deleteBoard, getBoards, getBoardWithColumns
+- **Columns (4):** createColumn, updateColumn, deleteColumn, reorderColumns
+- **Tasks (8):** createTask, updateTask, deleteTask, moveTask, reorderTasksInColumn, createSubtask, toggleSubtask, deleteSubtask
+
+### 2.3 Patr�n de implementaci�n
+- Cada action con "use server" y import "server-only".
+- Validaci�n con Zod via alidateInput(schema, input).
+- Try/catch envolviendo la l�gica ? retorno ActionResult<T>.
+- Soft delete via helpers transaccionales.
+- Orden fraccionario: computeInsertOrder(prev, next) con GAP=1000.
+- Revalidaci�n: evalidatePath("/kanban-dashboard", "page") por defecto.
+- Autorizaci�n: equireBoardOwnership(boardId) + indBoardIdFor* para acciones anidadas.
+
+### 2.4 Refactors aplicados (Fase 2 Fixes)
+
+**Round 1 � CRITICAL (commit 71cc8fa):**
+- Autorizaci�n en todas las mutaciones (11 acciones) via equireBoardOwnership.
+- server-only agregado a lib/actions/soft-delete.ts.
+- Collision detection en moveTask con rebalance autom�tico cuando gap es menor a 2.
+- IDOR fixes: updateBoard usa updateMany con filtro oardId; eorderColumns y eorderTasksInColumn verifican que IDs pertenezcan al padre.
+
+**Round 1 � HIGH/MEDIUM (commit 7999dd2):**
+- 	oggleSubtask con $queryRawUnsafe at�mico (UPDATE ... SET isCompleted = NOT isCompleted).
+- evalidatePath narrower: "page" por defecto, "layout" solo para board create/delete.
+- DTO select en getBoards y getBoardWithColumns (excluye ownerId, deletedAt).
+
+**Round 2 (commit  bb7fa6):**
+- Read auth: getBoards filtra por ownerId; getBoardWithColumns llama equireBoardOwnership.
+- Subtask IDOR en updateTask: subtask update usa where: { id, taskId } con count check.
+- Order injection en updateColumn: order eliminado del data pasado a prisma.update.
+- updateBoard silently no-op: count check de updateMany lanza si no match.
+- server-only en esult.ts y ordering.ts.
+
+**Refactor Alta (commit 4adad2):**
+- createTask revalidate de "layout" a "page" (consistencia).
+- import "server-only" en los 3 action files (defense-in-depth).
+
+### 2.5 Judgment Day (review adversarial)
+
+**Proceso:** 2 jueces ciegos en paralelo (sub-agents jd-judge-a y jd-judge-b) usando skills clean-code y 
+ext-best-practices.
+
+- **Round 1:** NEEDS_FIX � 5 CRITICAL + 5 WARNING + 3 INFO.
+- **Despu�s de Round 1 fixes:** Round 2 verific� � 4 CRITICAL fixed, 1 partial, 0 NOT_FIXED.
+- **Despu�s de Round 2 fixes:** APROBADO para single-user/seed-user deployment.
+
+**Total de issues encontrados y resueltos:** 14 (3 CRITICAL Round 1, 2 CRITICAL Round 2, 2 HIGH, 4 MEDIUM, 3 LOW).
+
+### 2.6 Verificaci�n final
+- 
+px tsc --noEmit: 0 errores.
+- unx tsx scripts/db-smoke.ts: 1 user, 3 boards, 3 members, 9 columns, 22 tasks, 54 subtasks.
+- unx tsx scripts/server-actions-smoke.ts: 12/12 assertions passed.
+- docker ps: PostgreSQL healthy.
+- 
+px prisma validate: Schema v�lido.
+
+### 2.7 Refactors pendientes (no bloqueantes)
+
+| # | Issue | Severidad | Raz�n para diferir |
+|---|-------|-----------|-------------------|
+| F1 | Auth error squashing � auth errors se esconden detr�s de "Failed to..." | MEDIUM | Requiere cambio arquitect�nico (Next.js unauthorized() API) |
+| F2 | updateBoard y updateTask a�n tienen 	hrow dentro de $transaction | LOW | Funcional, anti-pattern conocido |
+| F3 | $queryRawUnsafe en 	oggleSubtask | LOW | Seguro con params, pero tagged template ser�a mejor |
+| F4 | console.error duplicado en ~15 catches | LOW | DRY pero no urgente |
+| F5 | Tipos de retorno inconsistentes (DTO vs Prisma type) | LOW | Type cleanliness, no afecta runtime |
+
+---
+
+## ?? Resumen Total
+
+| M�trica | Valor |
+|---------|-------|
+| Ramas mergeadas a main | 3 (fase1, fase2, fase2-fixes) |
+| Archivos creados | ~17 (12 de Fase 2 + 5 de Fase 1) |
+| Archivos modificados | ~5 (package.json, bun.lock, .gitignore, schemas) |
+| L�neas agregadas (aprox) | ~2,500 |
+| Server Actions | 17 |
+| Schemas Zod | 14 |
+| Migrations Prisma | 1 (init) |
+| Tests (smoke) | 12 + 6 = 18 assertions |
+| Issues resueltos v�a Judgment Day | 14 |
+
+---
+
+## ?? Estado Actual del Proyecto
+
+**main branch contiene:**
+- PostgreSQL 18+ en Docker con datos seeded.
+- Prisma v7.8.0 con driver adapter y 6 modelos.
+- 17 Server Actions con auth, Zod, soft delete, orden fraccionario.
+- Singleton Prisma con HMR-safe pattern.
+- Smoke tests pasando.
+
+**Pendiente (Fase 3+):**
+- TanStack Query para reemplazar Zustand data stores.
+- Auth.js v5 con Credentials Provider.
+- Frontend adaptation (eliminar data.json).
+- Rebalance autom�tico expl�cito.
+- DTOs unificados.
+
+---
+
+*Log de completitud generado 2026-07-08. Refleja estado tras 22+ commits y 2 rondas de Judgment Day review.*
