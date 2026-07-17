@@ -41,7 +41,6 @@ export function AuthForm({ mode }: AuthFormProps) {
   const onSubmit = async (dataForm: AuthFormData) => {
     const { name, email, password, confirmPassword } = dataForm;
     if (mode === "signup") {
-      // TODO: Implement Better Auth logic here
       const {} = await signUp.email(
         {
           email,
@@ -65,7 +64,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         email,
         password,
         callbackURL: "/",
-        rememberMe: true,
+        rememberMe: false,
       },
       {
         onSuccess: (ctx) => {

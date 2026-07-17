@@ -5,7 +5,7 @@ import { BoardRole, type Board, type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ActionResult, validateInput } from "@/lib/actions/result";
 import { softDeleteBoard } from "@/lib/actions/soft-delete";
-import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/auth";
+import { getSeedUserId, requireBoardOwnership, getCurrentUserId } from "@/lib/authz";
 import { defineAction } from "@/lib/actions/define-action";
 import { GAP, computeNextOrder } from "@/lib/actions/ordering";
 import { upsertColumns } from "@/lib/actions/upsert";

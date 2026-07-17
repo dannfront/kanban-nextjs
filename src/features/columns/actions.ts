@@ -5,7 +5,7 @@ import { type Column } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { validateInput } from "@/lib/actions/result";
 import { softDeleteColumn } from "@/lib/actions/soft-delete";
-import { requireBoardOwnership, findBoardIdForColumn } from "@/lib/auth";
+import { requireBoardOwnership, findBoardIdForColumn } from "@/lib/authz";
 import { computeNextOrder, buildReorderUpdates } from "@/lib/actions/ordering";
 import { defineAction } from "@/lib/actions/define-action";
 import {

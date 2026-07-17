@@ -27,4 +27,8 @@ export const messages = {
       error: "Error creating account",
     },
   },
+  singout: {
+    success: "User signed out",
+    error: "Error signing out",
+  },
 } as const;

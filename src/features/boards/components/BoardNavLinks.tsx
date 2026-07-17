@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useBoards } from "@/features/boards/hooks/use-boards";
-import { useModalStore } from "@/store/useModalStore";
 import { boardDetailQueryOptions, boardTasksQueryOptions } from "@/features/boards/hooks/query-options";
 import type { Board } from "@/features/boards/types";
 import iconBoard from "@/assets/icon-board.svg";
@@ -19,7 +18,6 @@ export function BoardNavLinks({ boards: fallbackBoards, onNavigate }: BoardNavLi
   const params = useParams<{ boardId?: string }>();
   const boardId = params.boardId;
   const { data: queryBoards } = useBoards();
-  const openModal = useModalStore((state) => state.openModal);
   const queryClient = useQueryClient();
 
   // Use query cache boards when available (populated by SSR HydrationBoundary),
@@ -61,15 +59,6 @@ export function BoardNavLinks({ boards: fallbackBoards, onNavigate }: BoardNavLi
           </Link>
         );
       })}
-      <button
-        type="button"
-        onClick={() => openModal("add-board")}
-        className="flex w-full items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold text-[var(--color-main-purple)] transition-colors hover:text-[var(--color-main-purple-hover)]"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={iconBoard.src} alt="" width={16} height={16} />
-        + Create New Board
-      </button>
     </nav>
   );
 }

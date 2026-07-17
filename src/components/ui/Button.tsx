@@ -2,10 +2,9 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "destructive";
-type ButtonSize = "lg" | "sm" | "icon";
+type ButtonSize = "lg" | "sm" | "icon" | "xs";
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
 }
@@ -23,6 +22,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-[0.9375rem] font-bold",
   sm: "h-10 px-6 text-[0.8125rem] font-bold",
   icon: "h-12 w-12 items-center justify-center",
+  xs: "h-8 px-4 text-[0.75rem] font-bold",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -35,7 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <button
@@ -43,17 +43,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled}
         className={cn(
           "inline-flex items-center justify-center rounded-full transition-colors",
-          "disabled:cursor-not-allowed disabled:opacity-50",
+          "disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer",
           variantClasses[variant],
           sizeClasses[size],
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

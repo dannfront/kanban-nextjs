@@ -19,7 +19,7 @@ import {
   findBoardIdForColumn,
   findBoardIdForTask,
   findBoardIdForSubtask,
-} from "@/lib/auth";
+} from "@/lib/authz";
 import { BoardIdSchema } from "@/features/boards/schemas";
 import {
   CreateTaskSchema,

@@ -8,6 +8,8 @@ import {
   boardDetailQueryOptions,
   boardTasksQueryOptions,
 } from "@/features/boards/hooks/query-options";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 interface PageProps {
   params: Promise<{ boardId: string }>;
@@ -15,6 +17,10 @@ interface PageProps {
 
 export default async function BoardPage({ params }: PageProps) {
   const { boardId } = await params;
+
+  const session=await auth.api.getSession({
+    headers:await headers()
+  })
 
   // SSR prefetch board detail + tasks into TanStack Query cache
   const queryClient = getQueryClient();
