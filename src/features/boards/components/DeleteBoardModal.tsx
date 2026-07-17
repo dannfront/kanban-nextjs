@@ -52,7 +52,7 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
       if (params.boardId === boardId) {
         const remainingBoards = allBoards.filter((b) => b.id !== boardId);
         const nextBoard = remainingBoards[0];
-        router.push(nextBoard ? `/kanban-dashboard/${nextBoard.id}` : "/");
+        router.push(nextBoard ? `/kanban-dashboard/${nextBoard.id}` : "/kanban-dashboard");
       }
 
       closeModal();

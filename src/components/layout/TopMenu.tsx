@@ -43,7 +43,7 @@ export function TopMenu() {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-[var(--color-lines-dark)] bg-[var(--color-bg-header)] px-4 md:h-24 md:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-20 items-center justify-between  border-[var(--color-lines-dark)] bg-[var(--color-bg-header)] px-4 md:h-24 md:px-6 lg:px-8">
       <div className="flex items-center gap-4 md:hidden">
         <Image src={logoMobile} alt="Kanban" width={24} height={25} />
         <button
@@ -67,7 +67,12 @@ export function TopMenu() {
           disabled={!boardId}
           onClick={handleAddTask}
         >
-          <Image src={iconAddTaskMobile} alt="Add New Task" width={12} height={12} />
+          <Image
+            src={iconAddTaskMobile}
+            alt="Add New Task"
+            width={12}
+            height={12}
+          />
         </Button>
         <Button
           size="lg"

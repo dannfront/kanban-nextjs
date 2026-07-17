@@ -41,7 +41,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => openModal("add-board")}
-            className="flex items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold text-[var(--color-main-purple)] transition-colors hover:text-[var(--color-main-purple-hover)]"
+            className="flex items-center gap-4 px-4 py-3.5 text-[0.9375rem] font-bold text-[var(--color-main-purple)] transition-colors hover:text-[var(--color-main-purple-hover)] mb-10"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={iconBoard.src} alt="" width={16} height={16} />+ Create

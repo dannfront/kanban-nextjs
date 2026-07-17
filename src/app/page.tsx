@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+export const metadata = {
+  title: "Kanban landing page",
+  description: "Kanban project management tool",
+};
 
 export default function Home() {
-  redirect("/kanban-dashboard");
+  return <h1>hola</h1>;
 }
