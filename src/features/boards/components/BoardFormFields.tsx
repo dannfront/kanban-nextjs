@@ -9,11 +9,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { boardKeys } from "@/features/boards/hooks/query-keys";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useColor } from "@/lib/colors";
 import { ColumnFields } from "./ColumnFields";
 
 const columnSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Can't be empty").max(255),
+  color: z.string().optional(),
 });
 
 const baseBoardFormSchema = z.object({
@@ -28,9 +30,9 @@ function createBoardFormResolver(
   excludeBoardId?: string,
 ) {
   const schema = baseBoardFormSchema.superRefine((data, ctx) => {
-    const boards = queryClient.getQueryData<
-      { id: string; name: string }[]
-    >(boardKeys.all);
+    const boards = queryClient.getQueryData<{ id: string; name: string }[]>(
+      boardKeys.all,
+    );
     if (!boards) return;
 
     const isDuplicate = boards.some(
@@ -52,7 +54,10 @@ function createBoardFormResolver(
 
 interface BoardFormFieldsProps {
   mode: "create" | "edit";
-  defaultValues?: { name: string; columns: { id?: string; name: string }[] };
+  defaultValues?: {
+    name: string;
+    columns: { id?: string; name: string; color?: string }[];
+  };
   excludeBoardId?: string;
   onRemoveColumn?: (columnId: string, columnName: string) => void;
   onSubmit: (data: BoardFormData) => void;
@@ -71,6 +76,8 @@ export function BoardFormFields({
   const nameLabel = mode === "create" ? "Name" : "Board Name";
   const columnsLabel = mode === "create" ? "Columns" : "Board Columns";
 
+  const colorRepo = useColor();
+
   const formDefaults = useMemo(() => {
     if (mode === "edit") {
       return {
@@ -79,11 +86,12 @@ export function BoardFormFields({
       };
     }
 
+    const defaults = colorRepo.generateMany(1);
     return {
       name: "",
-      columns: [{ name: "Todo" }, { name: "Doing" }],
+      columns: [{ name: "Todo", color: defaults[0] }],
     };
-  }, [defaultValues, mode]);
+  }, [defaultValues, mode, colorRepo]);
 
   const resolver = useMemo(
     () => createBoardFormResolver(queryClient, excludeBoardId),
@@ -121,7 +129,13 @@ export function BoardFormFields({
         allColumns={allColumns}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        className="w-full"
+        disabled={isSubmitting}
+      >
         {mode === "create" ? "Create New Board" : "Save Changes"}
       </Button>
     </form>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import iconCross from "@/assets/icon-cross.svg";
 import type { BoardFormData } from "./BoardFormFields";
+import { useColor } from "@/lib/colors";
 
 interface ColumnFieldsProps {
   control: Control<BoardFormData>;
@@ -35,6 +36,7 @@ export function ColumnFields({
   });
 
   const { errors } = useFormState({ control });
+  const colorRepo = useColor();
 
   useEffect(() => {
     if (!allColumns) return;
@@ -76,6 +78,16 @@ export function ColumnFields({
             )}
           />
           <Controller
+            name={`columns.${index}.color`}
+            control={control}
+            render={({ field: colorField }) => (
+              <span
+                className="inline-block h-3.75 w-3.75 shrink-0 rounded-full"
+                style={{ backgroundColor: colorField.value }}
+              />
+            )}
+          />
+          <Controller
             name={`columns.${index}.name`}
             control={control}
             render={({ field: inputField, fieldState }) => (
@@ -109,7 +121,7 @@ export function ColumnFields({
         variant="secondary"
         size="sm"
         className="w-full"
-        onClick={() => append({ name: "" })}
+        onClick={() => append({ name: "", color: colorRepo.generate() })}
       >
         + Add New Column
       </Button>

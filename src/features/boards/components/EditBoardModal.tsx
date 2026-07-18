@@ -15,6 +15,7 @@ import {
 } from "@/features/boards/components/BoardFormFields";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useColor } from "@/lib/colors";
 
 interface EditBoardModalProps {
   boardId: string;
@@ -47,10 +48,13 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
       columns: boardColumns.map((column) => ({
         id: column.id,
         name: column.name,
+        color: column.color,
       })),
     }),
     [board, boardColumns]
   );
+
+  const colorRepo = useColor();
 
   if (!board) {
     return (
@@ -69,9 +73,14 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
 
   const handleSubmit = async (data: BoardFormData) => {
     try {
+      const columns = data.columns.map((col) => ({
+        ...col,
+        color: col.color ?? colorRepo.generate(),
+      }));
+
       await updateBoard.mutateAsync({
         name: data.name,
-        columns: data.columns,
+        columns,
       });
       closeModal();
     } catch (error) {
