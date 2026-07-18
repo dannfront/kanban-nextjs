@@ -20,6 +20,7 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
   const params = useParams<{ boardId: string }>();
   const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
+  const closeAll = useModalStore((state) => state.closeAll);
   const deleteTask = useDeleteTask(boardId);
   const notify = useNotify();
   const { data: tasks } = useBoardTasks(boardId);
@@ -47,7 +48,7 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
     try {
       await deleteTask.mutateAsync(taskId);
       notify.success(messages.task.delete.success);
-      closeModal();
+      closeAll();
     } catch (error) {
       notify.error(messages.task.delete.error);
       console.error("Failed to delete task", error);

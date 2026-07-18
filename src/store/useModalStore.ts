@@ -22,6 +22,7 @@ interface ModalState {
   stack: ModalEntry[];
   openModal: (type: ModalType, data?: unknown) => void;
   closeModal: () => void;
+  closeAll: () => void;
 }
 
 export const useModalStore = create<ModalState>()((set) => ({
@@ -34,6 +35,7 @@ export const useModalStore = create<ModalState>()((set) => ({
     set((state) => ({
       stack: state.stack.slice(0, -1),
     })),
+  closeAll: () => set({ stack: [] }),
 }));
 
 export const useActiveModal = () =>
