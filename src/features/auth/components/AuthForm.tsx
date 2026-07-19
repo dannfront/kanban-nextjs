@@ -46,11 +46,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           email,
           name: name!,
           password,
-          callbackURL: "/",
+          callbackURL: "/kanban-dashboard",
         },
         {
           onSuccess: (ctx) => {
-            router.push("/");
+            router.push("/kanban-dashboard");
           },
           onError: (_ctx) => {
             notify.error(messages.auth.signup.error);
@@ -64,12 +64,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       {
         email,
         password,
-        callbackURL: "/",
+        callbackURL: "/kanban-dashboard",
         rememberMe: false,
       },
       {
         onSuccess: (ctx) => {
-          router.push("/");
+          router.push("/kanban-dashboard");
         },
         onError: (_ctx) => {
           notify.error(messages.auth.login.error);
