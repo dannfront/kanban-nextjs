@@ -8,7 +8,7 @@ import { useBoard } from "@/features/boards/hooks/use-board";
 import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
 import { useToggleSubtask } from "@/features/tasks/hooks/use-toggle-subtask";
 import { useMoveTask } from "@/features/tasks/hooks/use-move-task";
-import { TaskNotFound } from "@/features/tasks/components/TaskNotFound";
+import { ViewTaskModalEmpty } from "@/features/tasks/components/ViewTaskModalEmpty";
 import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
 import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
@@ -56,16 +56,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
   );
 
   if (!task) {
-    return (
-      <Modal
-        isOpen
-        onClose={closeModal}
-        size="md"
-        className={cn(modalCardClassName)}
-      >
-        <TaskNotFound />
-      </Modal>
-    );
+    return <ViewTaskModalEmpty onClose={closeModal} />;
   }
 
   const completedCount = task.subtasks.filter((s) => s.isCompleted).length;
@@ -144,9 +135,7 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
             >
               <Checkbox
                 checked={subtask.isCompleted}
-                onChange={() =>
-                  toggleSubtask.mutate(subtask.id)
-                }
+                onChange={() => toggleSubtask.mutate(subtask.id)}
                 label={subtask.title}
                 strikethroughWhenChecked
               />
