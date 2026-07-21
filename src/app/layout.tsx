@@ -29,7 +29,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="h-full min-h-full flex flex-col font-sans">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+        >
           <QueryProvider>{children}</QueryProvider>
           <Toaster />
         </ThemeProvider>

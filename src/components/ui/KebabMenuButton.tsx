@@ -20,7 +20,7 @@ export function KebabMenuButton({
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/10"
+      className="flex cursor-pointer h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/10"
     >
       <Image src={iconVerticalEllipsis} alt="" width={5} height={20} />
     </button>
