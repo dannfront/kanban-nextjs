@@ -25,6 +25,8 @@ export const messages = {
     },
     signup: {
       error: "Error creating account",
+      userExists:
+        "That user or email already exists. Please use another email.",
     },
   },
   singout: {
