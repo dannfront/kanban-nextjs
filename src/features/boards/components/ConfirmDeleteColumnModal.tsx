@@ -65,7 +65,7 @@ export function ConfirmDeleteColumnModal({
             size="sm"
             className="w-full"
             onClick={handleDelete}
-            disabled={deleteColumn.isPending}
+            loading={deleteColumn.isPending}
           >
             Delete
           </Button>

@@ -134,7 +134,7 @@ export function BoardFormFields({
         variant="primary"
         size="lg"
         className="w-full"
-        disabled={isSubmitting}
+        loading={isSubmitting}
       >
         {mode === "create" ? "Create New Board" : "Save Changes"}
       </Button>

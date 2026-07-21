@@ -11,6 +11,7 @@ import type { LoginFormData, SignUpFormData } from "@/features/auth/schemas";
 import { signIn, signUp } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useNotify, messages } from "@/lib/notifications";
+import { isAuthErrorCode } from "@/features/auth/types";
 
 type AuthFormData = LoginFormData & Partial<SignUpFormData>;
 
@@ -26,7 +27,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<AuthFormData>({
     resolver,
     defaultValues: {
@@ -52,7 +53,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           onSuccess: (ctx) => {
             router.push("/kanban-dashboard");
           },
-          onError: (_ctx) => {
+          onError: (ctx) => {
+            console.log(ctx);
+            if (isAuthErrorCode(ctx.error.code)) {
+              notify.error(messages.auth.signup.userExists);
+              return;
+            }
             notify.error(messages.auth.signup.error);
           },
         },
@@ -71,7 +77,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         onSuccess: (ctx) => {
           router.push("/kanban-dashboard");
         },
-        onError: (_ctx) => {
+        onError: (ctx) => {
+          console.log(ctx);
+
           notify.error(messages.auth.login.error);
         },
       },
@@ -144,7 +152,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             />
           )}
 
-          <Button type="submit" variant="primary" size="lg" className="w-full">
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting}>
             {submitText}
           </Button>
         </form>

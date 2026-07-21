@@ -167,7 +167,7 @@ export function TaskForm({
         )}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting}>
         {mode === "create" ? "Create Task" : "Save Changes"}
       </Button>
     </form>

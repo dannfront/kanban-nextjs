@@ -83,7 +83,7 @@ export function DeleteBoardModal({ boardId }: DeleteBoardModalProps) {
             size="sm"
             className="w-full"
             onClick={handleDelete}
-            disabled={deleteBoard.isPending}
+            loading={deleteBoard.isPending}
           >
             Delete
           </Button>

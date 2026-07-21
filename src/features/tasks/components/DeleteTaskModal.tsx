@@ -76,7 +76,7 @@ export function DeleteTaskModal({ taskId }: DeleteTaskModalProps) {
             size="sm"
             className="w-full"
             onClick={handleDelete}
-            disabled={deleteTask.isPending}
+            loading={deleteTask.isPending}
           >
             Delete
           </Button>
