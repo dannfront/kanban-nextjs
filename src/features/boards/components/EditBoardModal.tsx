@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
 import { useColor } from "@/lib/colors";
+import { useNotify, messages } from "@/lib/notifications";
 
 interface EditBoardModalProps {
   boardId: string;
@@ -55,6 +56,7 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
   );
 
   const colorRepo = useColor();
+  const notify = useNotify();
 
   if (!board) {
     return (
@@ -83,8 +85,8 @@ export function EditBoardModal({ boardId }: EditBoardModalProps) {
         columns,
       });
       closeModal();
-    } catch (error) {
-      console.error("Failed to update board", error);
+    } catch {
+      notify.error(messages.board.update.error);
     }
   };
 

@@ -119,13 +119,10 @@ export function useMoveTask(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKeys.tasks(boardId), context.previous);
       }
-      // TODO: add toast notification when UI toast library is integrated (PR2/PR3)
-      console.error("Failed to move task. Order restored.");
     },
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.tasks(boardId) });
-      queryClient.invalidateQueries({ queryKey: boardKeys.all });
     },
   });
 }

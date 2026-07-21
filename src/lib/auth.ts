@@ -5,10 +5,24 @@ import { prisma } from "./prisma";
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
+  // requireEmailVerification: false — no email service configured yet
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
     requireEmailVerification: false,
+  },
+
+  // Session expires after 1 day. updateAge matches expiresIn to avoid
+  // mid-session refresh churn. Cookie cache serves sessions from the
+  // cookie for 5 minutes before a DB round-trip is needed.
+  session: {
+    expiresIn: 86400,
+    updateAge: 86400,
+    cookieCache: {
+      enabled: true,
+      maxAge: 300,
+      strategy: "compact",
+    },
   },
 
   rateLimit: {

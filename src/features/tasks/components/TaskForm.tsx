@@ -24,7 +24,7 @@ const taskFormSchema = z.object({
   title: z.string().min(1, "Can't be empty").max(255),
   description: z.string().max(1000).optional().default(""),
   subtasks: z.array(subtaskSchema).default([]),
-  columnId: z.string().min(1, "Can't be empty"),
+  columnId: z.string().uuid("Invalid column"),
 });
 
 export type TaskFormData = z.infer<typeof taskFormSchema>;

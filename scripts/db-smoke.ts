@@ -1,17 +1,14 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
-import data from "../data.json";
 
+// Expected counts match the seed data now inlined in prisma/seed.ts
 const expected = {
   users: 1,
-  boards: data.boards.length,
-  boardMembers: data.boards.length,
-  columns: data.columns.length,
-  tasks: data.tasks.length,
-  subtasks: data.tasks.reduce(
-    (count, task) => count + task.subtasks.length,
-    0
-  ),
+  boards: 3,
+  boardMembers: 3,
+  columns: 9,
+  tasks: 22,
+  subtasks: 54,
 };
 
 async function main() {

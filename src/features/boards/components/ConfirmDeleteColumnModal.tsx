@@ -9,6 +9,7 @@ import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
 import { useDeleteColumn } from "@/features/columns/hooks/use-delete-column";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useNotify, messages } from "@/lib/notifications";
 
 interface ConfirmDeleteColumnModalProps {
   boardId: string;
@@ -23,6 +24,7 @@ export function ConfirmDeleteColumnModal({
 }: ConfirmDeleteColumnModalProps) {
   const closeModal = useModalStore((state) => state.closeModal);
   const deleteColumn = useDeleteColumn(boardId);
+  const notify = useNotify();
   const { data: tasks } = useBoardTasks(boardId);
   const allTasks = tasks ?? [];
 
@@ -39,8 +41,8 @@ export function ConfirmDeleteColumnModal({
     try {
       await deleteColumn.mutateAsync(columnId);
       closeModal();
-    } catch (error) {
-      console.error("Failed to delete column", error);
+    } catch {
+      notify.error(messages.column.delete.error);
     }
   };
 

@@ -4,15 +4,36 @@ export const messages = {
       success: "Board created",
       error: "Error creating board",
     },
+    update: {
+      success: "Board updated",
+      error: "Failed to update board",
+    },
     delete: {
       success: "Board deleted",
       error: "Error deleting board",
+    },
+  },
+  column: {
+    delete: {
+      success: "Column deleted",
+      error: "Failed to delete column",
     },
   },
   task: {
     create: {
       success: "Task created",
       error: "Error creating task",
+    },
+    update: {
+      success: "Task updated",
+      error: "Failed to update task",
+    },
+    move: {
+      success: "Task moved",
+      error: "Failed to move task",
+    },
+    reorder: {
+      error: "Failed to reorder tasks. Order restored.",
     },
     delete: {
       success: "Task deleted",
@@ -29,7 +50,7 @@ export const messages = {
         "That user or email already exists. Please use another email.",
     },
   },
-  singout: {
+  signout: {
     success: "User signed out",
     error: "Error signing out",
   },

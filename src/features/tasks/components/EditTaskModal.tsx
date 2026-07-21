@@ -6,11 +6,12 @@ import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
 import { useModalStore } from "@/store/useModalStore";
 import { useBoard } from "@/features/boards/hooks/use-board";
-import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useTask } from "@/features/boards/hooks/use-task";
 import { useUpdateTask } from "@/features/tasks/hooks/use-update-task";
 import { TaskForm, type TaskFormData } from "./TaskForm";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
+import { useNotify, messages } from "@/lib/notifications";
 
 interface EditTaskModalProps {
   taskId: string;
@@ -20,15 +21,11 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
   const params = useParams<{ boardId: string }>();
   const boardId = params.boardId;
   const closeModal = useModalStore((state) => state.closeModal);
-  const { data: tasks } = useBoardTasks(boardId);
-  const allTasks = tasks ?? [];
-  const task = useMemo(
-    () => allTasks.find((t) => t.id === taskId),
-    [allTasks, taskId],
-  );
+  const task = useTask(boardId, taskId);
   const { data: boardData } = useBoard(boardId);
   const columns = boardData?.columns ?? [];
   const updateTask = useUpdateTask(boardId);
+  const notify = useNotify();
 
   const taskColumn = useMemo(
     () => columns.find((column) => column.id === task?.columnId),
@@ -92,8 +89,8 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
     try {
       await updateTask.mutateAsync({ taskId, input });
       closeModal();
-    } catch (error) {
-      console.error("Failed to update task", error);
+    } catch {
+      notify.error(messages.task.update.error);
     }
   };
 

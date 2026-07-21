@@ -15,7 +15,6 @@ export function useCreateSubtask(boardId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.tasks(boardId) });
-      queryClient.invalidateQueries({ queryKey: boardKeys.all });
     },
   });
 }

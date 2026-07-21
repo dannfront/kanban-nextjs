@@ -13,7 +13,7 @@ export function LogoutButton() {
     const { error } = await signOut();
 
     if (error) {
-      notify.error(messages.singout.error);
+      notify.error(messages.signout.error);
       return;
     }
 

@@ -6,8 +6,10 @@ import { Modal } from "@/components/ui/Modal";
 import { useModalStore } from "@/store/useModalStore";
 import { useBoard } from "@/features/boards/hooks/use-board";
 import { useBoardTasks } from "@/features/boards/hooks/use-board-tasks";
+import { useTask } from "@/features/boards/hooks/use-task";
 import { useToggleSubtask } from "@/features/tasks/hooks/use-toggle-subtask";
 import { useMoveTask } from "@/features/tasks/hooks/use-move-task";
+import { useNotify, messages } from "@/lib/notifications";
 import { ViewTaskModalEmpty } from "@/features/tasks/components/ViewTaskModalEmpty";
 import { SubtaskCounter } from "@/features/tasks/components/SubtaskCounter";
 import { KebabMenuButton } from "@/components/ui/KebabMenuButton";
@@ -38,10 +40,8 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const task = useMemo(
-    () => allTasks.find((t) => t.id === taskId),
-    [allTasks, taskId],
-  );
+  const notify = useNotify();
+  const task = useTask(boardId, taskId);
 
   const statusOptions = useMemo(
     () =>
@@ -80,11 +80,18 @@ export function ViewTaskModal({ taskId }: ViewTaskModalProps) {
     );
     const newIndex = targetTasks.length;
 
-    moveTaskMutation.mutate({
-      taskId,
-      targetColumnId: newColumnId,
-      newIndex,
-    });
+    moveTaskMutation.mutate(
+      {
+        taskId,
+        targetColumnId: newColumnId,
+        newIndex,
+      },
+      {
+        onError: () => {
+          notify.error(messages.task.move.error);
+        },
+      },
+    );
   };
 
   return (

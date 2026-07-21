@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { reorderTasksInColumn } from "@/features/tasks/actions";
 import { boardKeys } from "@/features/boards/hooks/query-keys";
+import { useNotify, messages } from "@/lib/notifications";
 import type { TaskWithSubtasks } from "@/features/tasks/types";
 
 interface ReorderVars {
@@ -12,6 +13,7 @@ interface ReorderVars {
 
 export function useReorderTasks(boardId: string) {
   const queryClient = useQueryClient();
+  const notify = useNotify();
 
   return useMutation({
     mutationFn: async ({ columnId, orderedTaskIds }: ReorderVars) => {
@@ -51,12 +53,11 @@ export function useReorderTasks(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKeys.tasks(boardId), context.previous);
       }
-      console.error("Failed to reorder tasks. Order restored.");
+      notify.error(messages.task.reorder.error);
     },
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.tasks(boardId) });
-      queryClient.invalidateQueries({ queryKey: boardKeys.all });
     },
   });
 }
