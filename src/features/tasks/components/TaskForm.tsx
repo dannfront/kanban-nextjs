@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 import type { Task } from "@/features/tasks/types";
 import iconCross from "@/assets/icon-cross.svg";
 
@@ -18,6 +19,7 @@ const subtaskSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1, "Can't be empty").max(255),
   isCompleted: z.boolean().default(false),
+  isActive: z.boolean().optional(),
 });
 
 const taskFormSchema = z.object({
@@ -88,7 +90,7 @@ export function TaskForm({
     defaultValues: formDefaults,
   });
 
-  const { fields, append, remove } = useFieldArray<
+  const { fields, append, remove, update } = useFieldArray<
     TaskFormData,
     "subtasks",
     "keyId"
@@ -119,14 +121,24 @@ export function TaskForm({
           Subtasks
         </p>
         {fields.map((field, index) => (
-          <div key={field.keyId} className="flex items-center gap-4">
+          <div
+            key={field.keyId}
+            className={cn(
+              "flex items-center gap-4",
+              field.isActive === false && "opacity-40"
+            )}
+          >
             <input type="hidden" {...register(`subtasks.${index}.id`)} />
+            <input type="hidden" {...register(`subtasks.${index}.isActive`)} />
             <Controller
               name={`subtasks.${index}.title`}
               control={control}
               render={({ field: inputField, fieldState }) => (
                 <Input
-                  className="flex-1"
+                  className={cn(
+                    "flex-1",
+                    field.isActive === false && "line-through"
+                  )}
                   error={fieldState.error?.message}
                   {...inputField}
                 />
@@ -134,7 +146,13 @@ export function TaskForm({
             />
             <button
               type="button"
-              onClick={() => remove(index)}
+              onClick={() => {
+                if (field.id) {
+                  update(index, { ...field, isActive: false });
+                } else {
+                  remove(index);
+                }
+              }}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[var(--color-medium-gray)] transition-colors hover:text-[var(--color-red)]"
               aria-label="Remove subtask"
             >
