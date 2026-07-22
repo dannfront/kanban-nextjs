@@ -53,7 +53,7 @@ export function DndProvider({
           source ? (
             <div className="pointer-events-none w-[280px] rounded-lg bg-[var(--color-bg-card)] px-4 py-[23px] opacity-90 shadow-xl">
               <span className="text-[15px] font-bold text-[var(--color-text-primary)]">
-                Task {String(source.id)}
+                {source.data?.title ?? String(source.id)}
               </span>
             </div>
           ) : null

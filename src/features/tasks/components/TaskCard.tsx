@@ -17,6 +17,7 @@ export function TaskCard({ task, index, columnId }: TaskCardProps) {
     taskId: task.id,
     index,
     columnId,
+    title: task.title,
   });
   const openModal = useModalStore((state) => state.openModal);
   const completed = task.subtasks.filter((s) => s.isCompleted).length;
