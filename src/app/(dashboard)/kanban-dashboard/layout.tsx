@@ -3,6 +3,8 @@ import { getQueryClient } from "@/lib/query-client";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { boardsQueryOptions } from "@/features/boards/hooks/query-options";
 
+export const dynamic = "force-dynamic";
+
 interface LayoutProps {
   children: React.ReactNode;
 }
