@@ -36,6 +36,8 @@ interface TaskFormProps {
   defaultValues?: Partial<Task>;
   mode: "create" | "edit";
   onSubmit: (data: TaskFormData) => void;
+  onRemoveSubtask?: (subtaskId: string) => void;
+  isDeleting?: boolean;
 }
 
 export function TaskForm({
@@ -43,6 +45,8 @@ export function TaskForm({
   defaultValues,
   mode,
   onSubmit,
+  onRemoveSubtask,
+  isDeleting = false,
 }: TaskFormProps) {
   const { data: boardData } = useBoard(boardId);
   const columns =
@@ -134,7 +138,12 @@ export function TaskForm({
             />
             <button
               type="button"
-              onClick={() => remove(index)}
+              onClick={() => {
+                if (field.id && onRemoveSubtask) {
+                  onRemoveSubtask(field.id);
+                }
+                remove(index);
+              }}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[var(--color-medium-gray)] transition-colors hover:text-[var(--color-red)]"
               aria-label="Remove subtask"
             >
@@ -167,7 +176,7 @@ export function TaskForm({
         )}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting}>
+      <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting || isDeleting}>
         {mode === "create" ? "Create Task" : "Save Changes"}
       </Button>
     </form>

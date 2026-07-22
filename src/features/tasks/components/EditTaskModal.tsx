@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { ModalTitle } from "@/components/ui/ModalTitle";
@@ -8,6 +8,7 @@ import { useModalStore } from "@/store/useModalStore";
 import { useBoard } from "@/features/boards/hooks/use-board";
 import { useTask } from "@/features/boards/hooks/use-task";
 import { useUpdateTask } from "@/features/tasks/hooks/use-update-task";
+import { useDeleteSubtask } from "@/features/tasks/hooks/use-delete-subtask";
 import { TaskForm, type TaskFormData } from "./TaskForm";
 import { cn } from "@/lib/utils";
 import { modalCardClassName } from "@/lib/modalCard";
@@ -25,7 +26,23 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
   const { data: boardData } = useBoard(boardId);
   const columns = boardData?.columns ?? [];
   const updateTask = useUpdateTask(boardId);
+  const deleteSubtask = useDeleteSubtask(boardId);
+  const [pendingDeletions, setPendingDeletions] = useState<Set<string>>(new Set());
   const notify = useNotify();
+
+  const handleRemoveSubtask = (subtaskId: string) => {
+    setPendingDeletions((prev) => new Set(prev).add(subtaskId));
+    deleteSubtask.mutate(subtaskId, {
+      onError: () => notify.error(messages.subtask.delete.error),
+      onSettled: () => {
+        setPendingDeletions((prev) => {
+          const next = new Set(prev);
+          next.delete(subtaskId);
+          return next;
+        });
+      },
+    });
+  };
 
   const taskColumn = useMemo(
     () => columns.find((column) => column.id === task?.columnId),
@@ -108,6 +125,8 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
           mode="edit"
           defaultValues={task}
           onSubmit={handleSubmit}
+          onRemoveSubtask={handleRemoveSubtask}
+          isDeleting={pendingDeletions.size > 0}
         />
       </div>
     </Modal>
