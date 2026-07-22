@@ -16,7 +16,7 @@ import iconCross from "@/assets/icon-cross.svg";
 
 const subtaskSchema = z.object({
   id: z.string().optional(),
-  title: z.string().min(1, "Can't be empty").max(255),
+  title: z.string().max(255),
   isCompleted: z.boolean().default(false),
   isDeleted: z.boolean().default(false),
 });
@@ -66,8 +66,8 @@ export function TaskForm({
     const defaultSubtasks =
       mode === "create"
         ? [
-            { title: "", isCompleted: false },
-            { title: "", isCompleted: false },
+            { title: "", isCompleted: false, isDeleted: false },
+            { title: "", isCompleted: false, isDeleted: false },
           ]
         : defaultValues?.subtasks ?? [];
 

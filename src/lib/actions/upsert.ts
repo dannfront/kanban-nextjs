@@ -38,14 +38,17 @@ export async function upsertSubtasks(
   subtasks: Array<{ id?: string; title: string; isDeleted?: boolean }>
 ): Promise<void> {
   for (const subtask of subtasks) {
-    if (subtask.isDeleted && subtask.id) {
-      const updated = await tx.subtask.updateMany({
-        where: { id: subtask.id, taskId, deletedAt: null },
-        data: { deletedAt: new Date() },
-      });
-      if (updated.count === 0) {
-        throw new Error("Subtask not found");
+    if (subtask.isDeleted) {
+      if (subtask.id) {
+        const updated = await tx.subtask.updateMany({
+          where: { id: subtask.id, taskId, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
+        if (updated.count === 0) {
+          throw new Error("Subtask not found");
+        }
       }
+      // If it doesn't have an id and isDeleted is true, skip it entirely
     } else if (subtask.id) {
       const updated = await tx.subtask.updateMany({
         where: { id: subtask.id, taskId, deletedAt: null },
@@ -54,7 +57,7 @@ export async function upsertSubtasks(
       if (updated.count === 0) {
         throw new Error("Subtask not found");
       }
-    } else {
+    } else if (subtask.title.trim().length > 0) {
       await tx.subtask.create({
         data: { taskId, title: subtask.title },
       });

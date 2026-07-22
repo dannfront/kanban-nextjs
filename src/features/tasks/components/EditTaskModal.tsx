@@ -58,7 +58,7 @@ export function EditTaskModal({ taskId }: EditTaskModalProps) {
 
   const handleSubmit = async (data: TaskFormData) => {
     const subtasks = data.subtasks
-      .filter((s) => s.title.trim().length > 0 || s.isDeleted)
+      .filter((s) => (s.id && s.isDeleted) || s.title.trim().length > 0)
       .map((subtask) => ({
         ...(subtask.id ? { id: subtask.id } : {}),
         title: subtask.title,

@@ -21,7 +21,7 @@ export const UpdateTaskSchema = z.object({
     .array(
       z.object({
         id: z.string().optional(),
-        title: z.string().min(1),
+        title: z.string(),
         isDeleted: z.boolean().optional(),
       })
     )
