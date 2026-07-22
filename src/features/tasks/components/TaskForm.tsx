@@ -18,6 +18,7 @@ const subtaskSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1, "Can't be empty").max(255),
   isCompleted: z.boolean().default(false),
+  isDeleted: z.boolean().default(false),
 });
 
 const taskFormSchema = z.object({
@@ -36,8 +37,6 @@ interface TaskFormProps {
   defaultValues?: Partial<Task>;
   mode: "create" | "edit";
   onSubmit: (data: TaskFormData) => void;
-  onRemoveSubtask?: (subtaskId: string) => void;
-  isDeleting?: boolean;
 }
 
 export function TaskForm({
@@ -45,8 +44,6 @@ export function TaskForm({
   defaultValues,
   mode,
   onSubmit,
-  onRemoveSubtask,
-  isDeleting = false,
 }: TaskFormProps) {
   const { data: boardData } = useBoard(boardId);
   const columns =
@@ -86,13 +83,14 @@ export function TaskForm({
     control,
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<TaskFormData>({
     resolver,
     defaultValues: formDefaults,
   });
 
-  const { fields, append, remove } = useFieldArray<
+  const { fields, append, remove, update } = useFieldArray<
     TaskFormData,
     "subtasks",
     "keyId"
@@ -122,41 +120,49 @@ export function TaskForm({
         <p className="text-xs font-bold text-[var(--color-text-secondary)]">
           Subtasks
         </p>
-        {fields.map((field, index) => (
-          <div key={field.keyId} className="flex items-center gap-4">
-            <input type="hidden" {...register(`subtasks.${index}.id`)} />
-            <Controller
-              name={`subtasks.${index}.title`}
-              control={control}
-              render={({ field: inputField, fieldState }) => (
-                <Input
-                  className="flex-1"
-                  error={fieldState.error?.message}
-                  {...inputField}
+        {fields.map(
+          (field, index) =>
+            !field.isDeleted && (
+              <div key={field.keyId} className="flex items-center gap-4">
+                <input type="hidden" {...register(`subtasks.${index}.id`)} />
+                <input type="hidden" {...register(`subtasks.${index}.isDeleted`)} />
+                <Controller
+                  name={`subtasks.${index}.title`}
+                  control={control}
+                  render={({ field: inputField, fieldState }) => (
+                    <Input
+                      className="flex-1"
+                      error={fieldState.error?.message}
+                      {...inputField}
+                    />
+                  )}
                 />
-              )}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (field.id && onRemoveSubtask) {
-                  onRemoveSubtask(field.id);
-                }
-                remove(index);
-              }}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[var(--color-medium-gray)] transition-colors hover:text-[var(--color-red)]"
-              aria-label="Remove subtask"
-            >
-              <Image src={iconCross} alt="" width={15} height={15} />
-            </button>
-          </div>
-        ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (field.id) {
+                      update(index, {
+                        ...getValues(`subtasks.${index}`),
+                        isDeleted: true,
+                      });
+                    } else {
+                      remove(index);
+                    }
+                  }}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[var(--color-medium-gray)] transition-colors hover:text-[var(--color-red)]"
+                  aria-label="Remove subtask"
+                >
+                  <Image src={iconCross} alt="" width={15} height={15} />
+                </button>
+              </div>
+            ),
+        )}
         <Button
           type="button"
           variant="secondary"
           size="sm"
           className="w-full"
-          onClick={() => append({ title: "", isCompleted: false })}
+          onClick={() => append({ title: "", isCompleted: false, isDeleted: false })}
         >
           + Add New Subtask
         </Button>
@@ -176,7 +182,7 @@ export function TaskForm({
         )}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting || isDeleting}>
+      <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting}>
         {mode === "create" ? "Create Task" : "Save Changes"}
       </Button>
     </form>

@@ -40,11 +40,6 @@ export const messages = {
       error: "Error deleting task",
     },
   },
-  subtask: {
-    delete: {
-      error: "Failed to delete subtask",
-    },
-  },
   auth: {
     login: {
       error: "Error signing in",
