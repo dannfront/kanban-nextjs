@@ -35,18 +35,10 @@ export async function upsertColumns(
 export async function upsertSubtasks(
   tx: Prisma.TransactionClient,
   taskId: string,
-  subtasks: Array<{ id?: string; title: string; isActive?: boolean }>
+  subtasks: Array<{ id?: string; title: string }>
 ): Promise<void> {
   for (const subtask of subtasks) {
-    if (subtask.id && subtask.isActive === false) {
-      const updated = await tx.subtask.updateMany({
-        where: { id: subtask.id, taskId, deletedAt: null },
-        data: { deletedAt: new Date() },
-      });
-      if (updated.count === 0) {
-        throw new Error("Subtask not found");
-      }
-    } else if (subtask.id) {
+    if (subtask.id) {
       const updated = await tx.subtask.updateMany({
         where: { id: subtask.id, taskId, deletedAt: null },
         data: { title: subtask.title },
