@@ -54,7 +54,6 @@ export function AuthForm({ mode }: AuthFormProps) {
             router.push("/kanban-dashboard");
           },
           onError: (ctx) => {
-            console.log(ctx);
             if (isAuthErrorCode(ctx.error.code)) {
               notify.error(messages.auth.signup.userExists);
               return;
@@ -77,9 +76,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         onSuccess: (ctx) => {
           router.push("/kanban-dashboard");
         },
-        onError: (ctx) => {
-          console.log(ctx);
-
+        onError: () => {
           notify.error(messages.auth.login.error);
         },
       },
